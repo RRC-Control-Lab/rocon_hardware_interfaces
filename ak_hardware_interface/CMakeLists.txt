@@ -6,27 +6,40 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(hardware_interface REQUIRED)
-find_package(pluginlib REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
+set(THIS_PACKAGE_INCLUDE_DEPENDS
+  hardware_interface
+  pluginlib
+  rclcpp
+  rclcpp_lifecycle
+)
 
+# find dependencies
+find_package(ament_cmake REQUIRED)
+foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
+  find_package(${Dependency} REQUIRED)
+endforeach()
+
+install(
+  DIRECTORY launch config urdf rviz
+  DESTINATION share/${PROJECT_NAME}
+)
+
+##COMPILE
 add_library(
   ak_hardware_interface
   SHARED
+  src/epoll_event_loop.cpp
+  src/socket_can.cpp
   src/ak_hardware_interface.cpp
 )
-target_include_directories(
-  ak_hardware_interface
-  PUBLIC
-  include
+target_compile_features(ak_hardware_interface PUBLIC cxx_std_20)
+target_include_directories(ak_hardware_interface PUBLIC
+$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+$<INSTALL_INTERFACE:include/ak_hardware_interface>
 )
 ament_target_dependencies(
-  ak_hardware_interface
-  hardware_interface
-  rclcpp
-  rclcpp_lifecycle
+  ak_hardware_interface PUBLIC
+  ${THIS_PACKAGE_INCLUDE_DEPENDS}
 )
 # prevent pluginlib from using boost
 target_compile_definitions(ak_hardware_interface PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
@@ -44,7 +57,7 @@ install(
 
 install(
   DIRECTORY include/
-  DESTINATION include
+  DESTINATION include/ak_hardware_interface
 )
 
 if(BUILD_TESTING)
@@ -76,11 +89,8 @@ ament_export_include_directories(
 ament_export_libraries(
   ak_hardware_interface
 )
-ament_export_dependencies(
-  hardware_interface
-  pluginlib
-  rclcpp
-  rclcpp_lifecycle
-)
 
+## EXPORTS
+ament_export_targets(ak_hardware_interface HAS_LIBRARY_TARGET)
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 ament_package()
