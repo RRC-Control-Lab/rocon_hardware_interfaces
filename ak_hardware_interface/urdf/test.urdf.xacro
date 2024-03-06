@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="test">
+    <!-- INCLUDES -->
+    <xacro:include filename="gazebo_materials.xacro" />
+    <xacro:include filename="inertial_macros.xacro" />
+
+    <!-- PROPERTIES -->
+    <xacro:property name="PI" value="3.1415926535897931"/>
+
+    <!-- BASE LINK -->
+    <link name="base_link">
+    </link>
+
+    <!-- WHEEL JOINT AND LINK -->
+    <joint name="wheel_joint" type="continuous">
+        <origin xyz="0 0 0.1" rpy="0 0 0" />
+        <parent link="base_link" />
+        <child link="wheel_link" />
+        <axis xyz="0.0 0.0 1.0"/>
+    </joint>
+
+    <link name="wheel_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <geometry>
+                <box size="0.5 0.5 0.1" />
+            </geometry>
+            <material name="red" />
+        </visual>
+        <collision>
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <geometry>
+                <box size="0.5 0.5 0.1" />
+            </geometry>
+            <material name="red" />
+        </collision>
+        <xacro:inertial_box mass="1.0" x="0.5" y="0.5" z="0.1">
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+        </xacro:inertial_box>
+    </link>
+
+
+    <ros2_control name="Wheel" type="system">
+        <hardware>
+            <plugin>ak_hardware_interface/AKHardwareInterface</plugin>
+            <param name="interface">can0</param>
+            <param name="node_id">1</param>
+            <param name="default_mode">velocity</param>
+        </hardware>
+        <joint name="wheel_joint">
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <command_interface name="position"/>
+            <!-- <command_interface name="velocity"/> -->
+        </joint>
+    </ros2_control>
+</robot>
