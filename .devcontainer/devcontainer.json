@@ -1,0 +1,50 @@
+{
+    "name": "ROCON Hardware Interface Development Container",
+    "privileged": true,
+    "remoteUser": "sivan2560",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/ros2_ws/src,type=bind",
+    "workspaceFolder": "/ros2_ws/src",
+    "customizations": {
+        "vscode": {
+            "extensions":[
+				"althack.ament-task-provider",
+				"betwo.b2-catkin-tools",
+				"DotJoshJohnson.xml",
+				"ms-azuretools.vscode-docker",
+				"ms-iot.vscode-ros",
+				"ms-python.python",
+				"ms-vscode.cpptools",
+				"redhat.vscode-yaml",
+                "seunlanlege.action-buttons",
+				"smilerobotics.urdf",
+				"streetsidesoftware.code-spell-checker",
+				"twxs.cmake",
+				"yzhang.markdown-all-in-one",
+				"zachflower.uncrustify"
+            ]
+        }
+    },
+    "containerEnv": {
+		"DISPLAY":"${localEnv:DISPLAY}", // Needed for GUI try ":0" for windows
+		"WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+		"XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
+		"PULSE_SERVER": "${localEnv:PULSE_SERVER}",
+        "QT_X11_NO_MITSHM": "1",
+		"LIBGL_ALWAYS_SOFTWARE": "1" // Needed for software rendering of opengl
+    },
+    "runArgs": [
+        // This will allow you to use a ptrace-based debugger like C++, Go, and Rust.
+		"--cap-add=all",
+        "--security-opt=seccomp:unconfined",
+        "--security-opt=apparmor:unconfined",
+        // mount all of the devices
+        "--volume=/dev:/dev",
+        "--net=host",
+        "--ipc=host",
+        "--name=rocon_hw_if_development"
+    ],
+    "postStartCommand": "sudo chown -R $(whoami) /ros2_ws /run"
+}
