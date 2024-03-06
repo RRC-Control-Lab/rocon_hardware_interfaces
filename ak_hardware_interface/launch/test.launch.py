@@ -9,7 +9,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    package_path = FindPackageShare('odrive_hardware_interface')
+    package_path = FindPackageShare('ak_hardware_interface')
     # Declare arguments
     declared_arguments = []
     declared_arguments.append(
