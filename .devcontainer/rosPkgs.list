@@ -1,5 +1,6 @@
 ros-humble-ros2-control
 ros-humble-ros2-controllers
 ros-humble-plotjuggler-ros
+ros-humble-xacro
 iproute2
 can-utils

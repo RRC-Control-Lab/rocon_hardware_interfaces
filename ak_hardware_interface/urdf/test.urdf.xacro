@@ -40,18 +40,18 @@
     </link>
 
 
-    <ros2_control name="Wheel" type="system">
+    <ros2_control name="Wheel" type="actuator">
         <hardware>
             <plugin>ak_hardware_interface/AKHardwareInterface</plugin>
             <param name="interface">can0</param>
-            <param name="node_id">1</param>
-            <param name="default_mode">velocity</param>
         </hardware>
         <joint name="wheel_joint">
+            <param name="node_id">1</param>
+            <param name="model">AK80_64</param>
+            <param name="control_mode">torque</param>
             <state_interface name="position"/>
             <state_interface name="velocity"/>
-            <command_interface name="position"/>
-            <!-- <command_interface name="velocity"/> -->
+            <command_interface name="effort"/>
         </joint>
     </ros2_control>
 </robot>

@@ -47,12 +47,11 @@ target_compile_definitions(ak_hardware_interface PUBLIC "PLUGINLIB__DISABLE_BOOS
 pluginlib_export_plugin_description_file(
   hardware_interface ak_hardware_interface.xml)
 
-install(
-  TARGETS
-  ak_hardware_interface
-  RUNTIME DESTINATION bin
+install(TARGETS ak_hardware_interface
+  EXPORT export_ak_hardware_interface
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 
 install(
@@ -91,6 +90,6 @@ ament_export_libraries(
 )
 
 ## EXPORTS
-ament_export_targets(ak_hardware_interface HAS_LIBRARY_TARGET)
+ament_export_targets(export_ak_hardware_interface HAS_LIBRARY_TARGET)
 ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 ament_package()
