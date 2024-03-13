@@ -46,7 +46,7 @@
             <param name="interface">can0</param>
         </hardware>
         <joint name="wheel_joint">
-            <param name="node_id">1</param>
+            <param name="node_id">3</param>
             <param name="model">AK80_64</param>
             <param name="control_mode">torque</param>
             <state_interface name="position"/>
