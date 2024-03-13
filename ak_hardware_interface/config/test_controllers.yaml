@@ -1,12 +1,20 @@
 controller_manager:
   ros__parameters:
-    update_rate: 10 # Hz
+    update_rate: 200 # Hz
         
     joint_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
       
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
+
+    effort_controller:
+      type: effort_controllers/JointGroupEffortController
+
+effort_controller:
+  ros__parameters:
+    joints:
+      - wheel_joint
 
 joint_trajectory_controller:
   ros__parameters:
@@ -34,9 +42,9 @@ joint_trajectory_controller:
         goal: 1.0
     gains:
       wheel_joint:
-        p: 120.0
+        p: 60.0
         i: 0.0
-        d: 30.0
+        d: 20.0
         i_clamp: 0.0
         ff_velocity_scale: 0.0
         angle_wraparound: false
