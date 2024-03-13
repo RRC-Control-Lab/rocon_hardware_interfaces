@@ -4,3 +4,4 @@ ros-humble-plotjuggler-ros
 ros-humble-xacro
 iproute2
 can-utils
+net-tools
