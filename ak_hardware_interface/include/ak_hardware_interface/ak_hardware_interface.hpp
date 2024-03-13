@@ -66,6 +66,9 @@ class AKHardwareInterface : public hardware_interface::ActuatorInterface
 {
 public:
   AK_HARDWARE_INTERFACE_PUBLIC
+  virtual ~AKHardwareInterface();
+
+  AK_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::CallbackReturn on_init(
     const hardware_interface::HardwareInfo & info) override;
 
