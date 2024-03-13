@@ -21,6 +21,12 @@
 
 namespace ak_hardware_interface
 {
+AKHardwareInterface::~AKHardwareInterface()
+{
+  // If the controller manager is shutdown via Ctrl + C the on_deactivate methods won't be called.
+  // We therefore need to make sure to actually deactivate the communication
+  on_deactivate(rclcpp_lifecycle::State());
+}
 hardware_interface::CallbackReturn AKHardwareInterface::on_init(
   const hardware_interface::HardwareInfo & info)
 {
@@ -156,20 +162,14 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
 {
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    if ((frame.can_id) != motor_[i].node_id)
+    if ((frame.data[0]) != motor_[i].node_id)
     {
       continue;
     }
-    if ((frame.len!=6)||(frame.len!=8))
+    if ((frame.len!=6)&&(frame.len!=8))
     {
       RCLCPP_WARN(rclcpp::get_logger("AKHardwareInterface"),
             "Incorrect frame length received from motor with ID: %d. %d != 6 or 8", frame.can_id, frame.len);
-      continue;
-    }
-    if ((frame.data[0]) != motor_[i].node_id)
-    {
-      RCLCPP_WARN(rclcpp::get_logger("AKHardwareInterface"),
-            "Incorrect motor ID in first byte of frame received from motor with ID: %d. First byte was %d", frame.can_id, frame.data[0]);
       continue;
     }
     if(frame.len == 8)
@@ -244,6 +244,9 @@ hardware_interface::return_type AKHardwareInterface::write(
         v_des = 0;
         kp = 0;
         kd = 0;
+        int8_t torque_sign = (hw_commands_efforts_n_m_[i] > 0) - (hw_commands_efforts_n_m_[i] < 0);
+        int8_t is_stopped = fabs(hw_states_velocities_rad_s_[i])<0.05;
+        double torque_mag = fabs(hw_commands_efforts_n_m_[i]) + 0.7 + (is_stopped*1.3);
         t_ff = fminf(fmaxf(motor_[i].T_min, hw_commands_efforts_n_m_[i]), motor_[i].T_max);
       }
       break;
