@@ -244,9 +244,9 @@ hardware_interface::return_type AKHardwareInterface::write(
         v_des = 0;
         kp = 0;
         kd = 0;
-        int8_t torque_sign = (hw_commands_efforts_n_m_[i] > 0) - (hw_commands_efforts_n_m_[i] < 0);
-        int8_t is_stopped = fabs(hw_states_velocities_rad_s_[i])<0.05;
-        double torque_mag = fabs(hw_commands_efforts_n_m_[i]) + 0.7 + (is_stopped*1.3);
+        // int8_t torque_sign = (hw_commands_efforts_n_m_[i] > 0) - (hw_commands_efforts_n_m_[i] < 0);
+        // int8_t is_stopped = fabs(hw_states_velocities_rad_s_[i])<0.05;
+        // double torque_mag = fabs(hw_commands_efforts_n_m_[i]) + 0.7 + (is_stopped*1.3);
         t_ff = fminf(fmaxf(motor_[i].T_min, hw_commands_efforts_n_m_[i]), motor_[i].T_max);
       }
       break;
