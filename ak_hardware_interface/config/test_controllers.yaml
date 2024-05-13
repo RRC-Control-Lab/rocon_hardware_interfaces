@@ -32,7 +32,7 @@ joint_trajectory_controller:
     interpolation_method: splines
     open_loop_control: false
     start_with_holding: true
-    allow_nonzero_velocity_at_trajectory_end: false
+    allow_nonzero_velocity_at_trajectory_end: true
     cmd_timeout: 0.0
     constraints:
       stopped_velocity_tolerance: 1.0
@@ -42,9 +42,9 @@ joint_trajectory_controller:
         goal: 1.0
     gains:
       wheel_joint:
-        p: 60.0
+        p: 1.0
         i: 0.0
-        d: 20.0
+        d: 10.0
         i_clamp: 0.0
         ff_velocity_scale: 0.0
         angle_wraparound: false
