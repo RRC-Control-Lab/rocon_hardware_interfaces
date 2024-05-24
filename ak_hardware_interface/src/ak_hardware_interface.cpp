@@ -112,7 +112,7 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
       RCLCPP_INFO(
         rclcpp::get_logger(
           "AKHardwareInterface"),
-        "Parameter 'reduction' set for '%s' to %lf.",
+        "Parameter 'offset' set for '%s' to %lf.",
         info_.joints[i].name.c_str(),motor_[i].offset);
     }
     it = info_.joints[i].parameters.find("kp");
