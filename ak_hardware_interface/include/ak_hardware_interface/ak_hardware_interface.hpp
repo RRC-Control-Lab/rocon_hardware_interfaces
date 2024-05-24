@@ -133,6 +133,11 @@ private:
   struct Motor {
     uint32_t node_id;
     std::string model;
+    uint8_t current_temp;
+    uint8_t error_code;
+    uint8_t control_mode;
+    double kp;
+    double kd;
     double P_min;
     double P_max;
     double V_min;
@@ -147,26 +152,20 @@ private:
     double Current_Factor;
     double Kt_actual;
     double GEAR_RATIO;
-    double current_position;
-    double current_velocity;
-    double current_torque;
-    uint8_t current_temp;
-    double commanded_position;
-    double commanded_velocity;
-    double commanded_torque;
-    uint8_t error_code;
-    uint8_t control_mode;
+    double reduction;
+    double offset;
+    double raw_position_rad;
+    double raw_velocity_rad_s;
+    double raw_torque_n_m;
+    double hw_commands_positions_rad;
+    double hw_commands_velocities_rad_s;
+    double hw_commands_efforts_n_m;
+    double hw_states_positions_rad;
+    double hw_states_velocities_rad_s;
+    double hw_states_efforts_n_m;
   };
 
   std::vector<Motor> motor_;
-  
-  // States
-  std::vector<double> hw_commands_positions_rad_;
-  std::vector<double> hw_commands_velocities_rad_s_;
-  std::vector<double> hw_commands_efforts_n_m_;
-  std::vector<double> hw_states_positions_rad_;
-  std::vector<double> hw_states_velocities_rad_s_;
-  std::vector<double> hw_states_efforts_n_m_;
 
   int float_to_uint(float x, float x_min, float x_max, unsigned int bits)
   {
