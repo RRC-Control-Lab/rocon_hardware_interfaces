@@ -22,9 +22,11 @@ Info on some parameters is given below
   - If the Raw Position Feedback from AK(converted to radians) is taken as `pos` and the reduction between the systems is taken as `reduc`, the formula for the offset is as follows 
   $$-pos/reduc$$
    Note: The offset parameter is only useful if the AK has the same starting position respective to the Joints Origin on every startup. This implies that you are getting absolute readings from your Motor that are persistent even on boot up.
+- __Kp__: Sets kp for internal controller for AK Motors. Only used when position control mode is used.
+- __Kd__: Sets kd for internal controller for AK Motors. Only used when velocity control mode is used.
 
 ```bash
-<ros2_control name="Wheel" type="system">
+<ros2_control name="Wheel" type="actuator">
    <hardware>
       <plugin>ak_hardware_interface/AkHardwareInterface</plugin>
       <param name="interface">can0</param>
@@ -33,6 +35,8 @@ Info on some parameters is given below
          <param name="node_id">2</param>
          <param name="model">AK80_64</param>
          <param name="control_mode">torque</param>
+         <param name="kp">0.0</param>
+         <param name="kd">0.0</param>
          <param name="reduction">1.0</param>
          <param name="offset">0.0</param>
          <state_interface name="position"/>
