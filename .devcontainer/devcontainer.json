@@ -1,7 +1,7 @@
 {
     "name": "ROCON Hardware Interface Development Container",
     "privileged": true,
-    "remoteUser": "sivan2560",
+    "remoteUser": "container_user",
     "build": {
         "dockerfile": "Dockerfile"
     },
@@ -46,5 +46,5 @@
         "--ipc=host",
         "--name=rocon_hw_if_development"
     ],
-    "postStartCommand": "sudo chown -R $(whoami) /ros2_ws /run"
+    "postStartCommand": "sudo chown -R container_user /ros2_ws /run"
 }
