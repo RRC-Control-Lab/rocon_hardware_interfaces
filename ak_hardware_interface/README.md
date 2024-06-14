@@ -62,10 +62,7 @@ Info on some parameters is given below
    ```
 - To send commands to the AK you can use the following commands. Use the command for the controller that you have setup to use
   ```bash
-  ros2 topic pub /velocity_controller/commands std_msgs/msg/Float64MultiArray "data: [ 100.0 ]"
-  ```
-  ```bash
-  ros2 topic pub /position_controller/commands std_msgs/msg/Float64MultiArray "data: [ 100.0 ]"
+  ros2 topic pub /effort_controller/commands std_msgs/msg/Float64MultiArray "data: [ 1.0 ]"
   ```
 
 ## Common Debugging Steps
