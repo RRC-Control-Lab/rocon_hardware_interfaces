@@ -152,8 +152,12 @@ private:
     double Current_Factor;
     double Kt_actual;
     double GEAR_RATIO;
+    double Range;
     double reduction;
     double offset;
+    double wrap_offset;
+    double prev_wrap_position_rad;
+    double curr_wrap_position_rad;
     double raw_position_rad;
     double raw_velocity_rad_s;
     double raw_torque_n_m;

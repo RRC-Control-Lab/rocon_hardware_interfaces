@@ -165,6 +165,7 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
     motor_[i].Current_Factor = supported_motors_.at(motor_[i].model)[Params::Current_Factor];
     motor_[i].Kt_actual = supported_motors_.at(motor_[i].model)[Params::Kt_actual];
     motor_[i].GEAR_RATIO = supported_motors_.at(motor_[i].model)[Params::GEAR_RATIO];
+    motor_[i].Range = motor_[i].P_max- motor_[i].P_min;
   }
 
   return CallbackReturn::SUCCESS;
@@ -181,6 +182,10 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_configure(
     motor_[i].hw_states_positions_rad = 0;
     motor_[i].hw_states_velocities_rad_s = 0;
     motor_[i].hw_states_efforts_n_m = 0;
+    motor_[i].prev_wrap_position_rad = 0;
+    motor_[i].curr_wrap_position_rad = 0;
+    motor_[i].raw_position_rad = 0;
+    motor_[i].wrap_offset = 0;
   }
   RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "Successfully configured!");
   return CallbackReturn::SUCCESS;
@@ -278,9 +283,22 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
     uint32_t velocity_uint = ((frame.data[3] << 8) | (frame.data[4]>>4) <<4 ) >> 4;
     uint32_t torque_uint = (frame.data[4]&0x0F)<<8 | frame.data[5];
 
-    motor_[i].raw_position_rad = uint_to_float(position_uint,motor_[i].P_min,motor_[i].P_max,16);
     motor_[i].raw_velocity_rad_s = uint_to_float(velocity_uint,motor_[i].V_min,motor_[i].V_max,12);
     motor_[i].raw_torque_n_m = uint_to_float(torque_uint,motor_[i].T_min,motor_[i].T_max,12);
+
+    // Logic to convert discontinuous counts into continuous counts by detecting wraparound
+    motor_[i].prev_wrap_position_rad = motor_[i].curr_wrap_position_rad;
+    motor_[i].curr_wrap_position_rad = uint_to_float(position_uint,motor_[i].P_min,motor_[i].P_max,16);
+    double delta =  motor_[i].curr_wrap_position_rad - motor_[i].prev_wrap_position_rad;
+    if (std::abs(delta)>(motor_[i].Range/2))
+    {
+      if (delta > 0) {
+          motor_[i].wrap_offset -= (motor_[i].Range);
+      } else {
+          motor_[i].wrap_offset += (motor_[i].Range);
+      }
+    }
+    motor_[i].raw_position_rad = motor_[i].wrap_offset + motor_[i].curr_wrap_position_rad;
   }
 }
 
