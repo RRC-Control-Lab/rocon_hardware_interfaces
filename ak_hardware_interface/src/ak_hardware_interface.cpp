@@ -49,49 +49,62 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
 
   motor_.resize(info_.joints.size(), std::numeric_limits<Motor>::quiet_NaN());
 
-  for (uint i = 0; i < info_.joints.size(); i++) {
+  for (uint i = 0; i < info_.joints.size(); i++)
+  {
     it = info_.joints[i].parameters.find("node_id");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_FATAL(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'node_id' not set for '%s'. It is required for Socket CAN.",
         info_.joints[i].name.c_str());
       return hardware_interface::CallbackReturn::ERROR;
-    } else {
+    }
+    else
+    {
       motor_[i].node_id = std::stoi(it->second);
     }
     it = info_.joints[i].parameters.find("model");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_FATAL(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'model' not set for '%s'. Valid values are AK80_9, AK10_9, AK60_6, AK70_10, AK80_6, AK80_64.",
         info_.joints[i].name.c_str());
       return hardware_interface::CallbackReturn::ERROR;
-    } else {
+    }
+    else
+    {
       motor_[i].model = it->second;
     }
     it = info_.joints[i].parameters.find("control_mode");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_FATAL(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'control_mode' not set for '%s'. Valid values are torque, velocity, position.",
         info_.joints[i].name.c_str());
       return hardware_interface::CallbackReturn::ERROR;
-    } else {
+    }
+    else
+    {
       motor_[i].control_mode = control_modes.at(it->second);
     }
     it = info_.joints[i].parameters.find("reduction");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_INFO(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'reduction' not set for '%s'. Defaulting to 1.0.",
         info_.joints[i].name.c_str());
       motor_[i].reduction = 1.0;
-    } else {
+    }
+    else
+    {
       motor_[i].reduction = std::stod(it->second);
       RCLCPP_INFO(
         rclcpp::get_logger(
@@ -100,14 +113,17 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
         info_.joints[i].name.c_str(),motor_[i].reduction);
     }
     it = info_.joints[i].parameters.find("offset");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_INFO(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'offset' not set for '%s'. Defaulting to 0.0.",
         info_.joints[i].name.c_str());
       motor_[i].offset = 0.0;
-    } else {
+    }
+    else
+    {
       motor_[i].offset = std::stod(it->second);
       RCLCPP_INFO(
         rclcpp::get_logger(
@@ -116,14 +132,17 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
         info_.joints[i].name.c_str(),motor_[i].offset);
     }
     it = info_.joints[i].parameters.find("kp");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_INFO(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'kp' not set for '%s'. Defaulting to 0.0.",
         info_.joints[i].name.c_str());
       motor_[i].kp = 0.0;
-    } else {
+    }
+    else
+    {
       motor_[i].kp = std::stod(it->second);
       RCLCPP_INFO(
         rclcpp::get_logger(
@@ -132,20 +151,78 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
         info_.joints[i].name.c_str(),motor_[i].kp);
     }
     it = info_.joints[i].parameters.find("kd");
-    if (it == info_.joints[i].parameters.end()) {
+    if (it == info_.joints[i].parameters.end())
+    {
       RCLCPP_INFO(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'kd' not set for '%s'. Defaulting to 0.0.",
         info_.joints[i].name.c_str());
       motor_[i].kd = 0.0;
-    } else {
+    }
+    else
+    {
       motor_[i].kd = std::stod(it->second);
       RCLCPP_INFO(
         rclcpp::get_logger(
           "AKHardwareInterface"),
         "Parameter 'kd' set for '%s' to %lf.",
         info_.joints[i].name.c_str(),motor_[i].kd);
+    }
+    it = info_.joints[i].parameters.find("home_on_startup");
+    if (it == info_.joints[i].parameters.end()) {
+      RCLCPP_INFO(
+        rclcpp::get_logger(
+          "AKHardwareInterface"),
+        "Parameter 'home_on_startup' not set for '%s'. Defaulting to False.",
+        info_.joints[i].name.c_str());
+      motor_[i].home_on_startup = false;
+    }
+    else
+    {
+      const std::string home_on_startup = it->second;
+      if (home_on_startup == "True") {
+        motor_[i].home_on_startup = true;
+      } else if (home_on_startup == "False") {
+        motor_[i].home_on_startup = false;
+      } else {
+        RCLCPP_WARN(
+          rclcpp::get_logger(
+            "AKHardwareInterface"),
+          "Invalid home_on_startup param value '%s'. Allowed values are True and False. Defaulting to False.",
+          home_on_startup.c_str());
+        motor_[i].home_on_startup = false;
+      RCLCPP_INFO(
+        rclcpp::get_logger(
+          "AKHardwareInterface"),
+        "Parameter 'home_on_startup' set for '%s' to %d.",
+        info_.joints[i].name.c_str(),motor_[i].home_on_startup);
+        }
+    }
+    if(motor_[i].home_on_startup)
+    {
+      it = info_.joints[i].parameters.find("homing_torque");
+      if (it == info_.joints[i].parameters.end())
+      {
+        RCLCPP_FATAL(
+          rclcpp::get_logger(
+            "AKHardwareInterface"),
+          "Parameter 'homing_torque' not set for '%s' despite 'home_on_startup' being set true. It is required for homing procedure.", info_.joints[i].name.c_str());
+        return hardware_interface::CallbackReturn::ERROR;
+      }
+      else
+      {
+        motor_[i].homing_torque = std::stod(it->second);
+        RCLCPP_INFO(
+          rclcpp::get_logger(
+            "AKHardwareInterface"),
+          "Parameter 'homing_torque' set for '%s' to %lf.",
+          info_.joints[i].name.c_str(),motor_[i].homing_torque);
+      }
+    }
+    else
+    {
+      motor_[i].homing_torque = 0.0;
     }
   }
 
@@ -168,6 +245,8 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_init(
     motor_[i].Range = motor_[i].P_max- motor_[i].P_min;
   }
 
+  activated = false;
+
   return CallbackReturn::SUCCESS;
 }
 
@@ -186,6 +265,9 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_configure(
     motor_[i].curr_wrap_position_rad = 0;
     motor_[i].raw_position_rad = 0;
     motor_[i].wrap_offset = 0;
+    motor_[i].homing_offset = 0;
+    motor_[i].endstop_state = false;
+    motor_[i].homing_done = false;
   }
   RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "Successfully configured!");
   return CallbackReturn::SUCCESS;
@@ -227,6 +309,24 @@ std::vector<hardware_interface::CommandInterface> AKHardwareInterface::export_co
 
   return command_interfaces;
 }
+hardware_interface::return_type AKHardwareInterface::perform_command_mode_switch(
+  const std::vector<std::string> &,
+  const std::vector<std::string> &)
+{
+  for (size_t i = 0; i < info_.joints.size(); i++) {
+    if (motor_[i].home_on_startup)
+    {
+      send_torque(&motor_[i],motor_[i].homing_torque);
+      while(!motor_[i].endstop_state);
+      send_torque(&motor_[i],0.0);
+      motor_[i].homing_offset = motor_[i].raw_position_rad;
+      motor_[i].homing_done = true;
+      RCLCPP_INFO(
+        rclcpp::get_logger("AKHardwareInterface"), "Homing Offset for '%s' detected as %lf",info_.joints[i].name.c_str(),motor_[i].homing_offset);
+    }
+  }
+  return hardware_interface::return_type::OK;
+}
 
 hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
@@ -246,16 +346,12 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   }
   can_event_loop = std::make_unique<std::thread>([&]() {event_loop_.run_until_empty();});
 
-  struct can_frame frame;
-  frame.len = 8;
-  const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
-  std::copy(data_values, data_values + 8, frame.data);
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    frame.can_id = motor_[i].node_id;
-    can_intf_.send_can_frame(frame);
+    activate_motor(&motor_[i]);
   }
   std::this_thread::sleep_for(std::chrono::seconds(3));
+  activated = true;
   return CallbackReturn::SUCCESS;
 }
 
@@ -267,16 +363,21 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
     {
       continue;
     }
-    if ((frame.len!=6)&&(frame.len!=8))
+    if ((frame.len!=6)&&(frame.len!=8)&&(frame.len!=2))
     {
       RCLCPP_WARN(rclcpp::get_logger("AKHardwareInterface"),
-            "Incorrect frame length received from motor with ID: %d. %d != 6 or 8", frame.can_id, frame.len);
+            "Incorrect frame length received from motor with ID: %d. %d != 2 or 6 or 8", frame.can_id, frame.len);
       continue;
     }
     if(frame.len == 8)
     {
       motor_[i].current_temp = int(frame.data[6]);
       motor_[i].error_code = int(frame.data[7]);
+    }
+    if(frame.len == 2)
+    {
+      motor_[i].endstop_state = bool(frame.data[1]);
+      return;
     }
 
     uint32_t position_uint = frame.data[1] <<8 | frame.data[2];
@@ -298,7 +399,7 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
           motor_[i].wrap_offset += (motor_[i].Range);
       }
     }
-    motor_[i].raw_position_rad = motor_[i].wrap_offset + motor_[i].curr_wrap_position_rad;
+    motor_[i].raw_position_rad = motor_[i].wrap_offset + motor_[i].curr_wrap_position_rad - motor_[i].homing_offset;
   }
 }
 
@@ -306,33 +407,9 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "Stopping ...please wait...");
-
-  struct can_frame frame;
-  frame.len = 8;
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    frame.can_id = motor_[i].node_id;
-
-    /// convert floats to unsigned ints ///
-    uint16_t p_int = float_to_uint(0.0, motor_[i].P_min, motor_[i].P_max, 16);
-    uint16_t v_int = float_to_uint(0.0, motor_[i].V_min, motor_[i].V_max, 12);
-    uint16_t kp_int = float_to_uint(0.0, motor_[i].Kp_min, motor_[i].Kp_max, 12);
-    uint16_t kd_int = float_to_uint(0.0, motor_[i].Kd_min, motor_[i].Kd_max, 12);
-    uint16_t t_int = float_to_uint(0.0, motor_[i].T_min, motor_[i].T_max, 12);
-    /// pack ints into the can buffer ///
-    frame.data[0] = p_int>>8; // Position 8 higher
-    frame.data[1] = p_int&0xFF; // Position 8 lower
-    frame.data[2] = v_int>>4; // Speed 8 higher
-    frame.data[3] = ((v_int&0xF)<<4)|(kp_int>>8); //Speed 4 bit lower KP 4bit higher
-    frame.data[4] = kp_int&0xFF; // KP 8 bit lower
-    frame.data[5] = kd_int>>4; // Kd 8 bit higher
-    frame.data[6] = ((kd_int&0xF)<<4)|(t_int>>8); // KP 4 bit lower torque 4 bit higher
-    frame.data[7] = t_int&0xff; // torque 4 bit lower
-    can_intf_.send_can_frame(frame);
-
-    const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
-    std::copy(data_values, data_values + 8, frame.data);
-    can_intf_.send_can_frame(frame);
+    deactivate_motor(&motor_[i]);
   }
 
   can_intf_.deinit();
@@ -349,6 +426,10 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_deactivate(
 hardware_interface::return_type AKHardwareInterface::read(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
+  if(!activated)
+  {
+    return hardware_interface::return_type::OK;
+  }
   for (uint i = 0; i < info_.joints.size(); i++)
   {
     if(motor_[i].error_code!=0)
@@ -371,64 +452,39 @@ hardware_interface::return_type AKHardwareInterface::read(
 hardware_interface::return_type AKHardwareInterface::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  struct can_frame frame;
+  if(!activated)
+  {
+    return hardware_interface::return_type::OK;
+  }
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    frame = can_frame{};
-    frame.can_id = motor_[i].node_id;
-    frame.len = 8;
-    double p_des = (motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction;
-    double v_des = motor_[i].hw_commands_velocities_rad_s * motor_[i].reduction;
-    double t_ff = motor_[i].hw_commands_efforts_n_m / motor_[i].reduction;
+    if(motor_[i].home_on_startup && (!motor_[i].homing_done))
+    {
+      continue;
+    }
+    double position = (motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction;
+    double velocity = motor_[i].hw_commands_velocities_rad_s * motor_[i].reduction;
+    double torque = motor_[i].hw_commands_efforts_n_m / motor_[i].reduction;
     double kp = motor_[i].kp;
     double kd = motor_[i].kd;
     switch(motor_[i].control_mode)
     {
       case ControlModes::TORQUE:
       {
-        p_des = 0;
-        v_des = 0;
-        kp = 0;
-        kd = 0;
-        t_ff = fminf(fmaxf(motor_[i].T_min, motor_[i].hw_commands_efforts_n_m), motor_[i].T_max);
+        send_torque(&motor_[i],torque);
       }
       break;
       case ControlModes::VELOCITY:
       {
-        p_des = 0;
-        v_des = fminf(fmaxf(motor_[i].V_min, motor_[i].hw_commands_velocities_rad_s), motor_[i].V_max);
-        kp = 0;
-        kd = fminf(fmaxf(motor_[i].Kd_min, kd), motor_[i].Kd_max);
-        t_ff = 0;
+        send_velocity(&motor_[i],velocity,kd);
       }
       break;
       case ControlModes::POSITION:
       {
-        p_des = fminf(fmaxf(motor_[i].P_min, motor_[i].hw_commands_positions_rad), motor_[i].P_max);
-        v_des = 0;
-        kp = fminf(fmaxf(motor_[i].Kp_min, kp), motor_[i].Kp_max);
-        kd = 0;
-        t_ff = 0;
+        send_position(&motor_[i],position,kp);
       }
       break;
     }
-    /// convert floats to unsigned ints ///
-    uint16_t p_int = float_to_uint(p_des, motor_[i].P_min, motor_[i].P_max, 16);
-    uint16_t v_int = float_to_uint(v_des, motor_[i].V_min, motor_[i].V_max, 12);
-    uint16_t kp_int = float_to_uint(kp, motor_[i].Kp_min, motor_[i].Kp_max, 12);
-    uint16_t kd_int = float_to_uint(kd, motor_[i].Kd_min, motor_[i].Kd_max, 12);
-    uint16_t t_int = float_to_uint(t_ff, motor_[i].T_min, motor_[i].T_max, 12);
-    /// pack ints into the can buffer ///
-    frame.data[0] = p_int>>8; // Position 8 higher
-    frame.data[1] = p_int&0xFF; // Position 8 lower
-    frame.data[2] = v_int>>4; // Speed 8 higher
-    frame.data[3] = ((v_int&0xF)<<4)|(kp_int>>8); //Speed 4 bit lower KP 4bit higher
-    frame.data[4] = kp_int&0xFF; // KP 8 bit lower
-    frame.data[5] = kd_int>>4; // Kd 8 bit higher
-    frame.data[6] = ((kd_int&0xF)<<4)|(t_int>>8); // KP 4 bit lower torque 4 bit higher
-    frame.data[7] = t_int&0xff; // torque 4 bit lower
-
-    can_intf_.send_can_frame(frame);
   }
 
   return hardware_interface::return_type::OK;

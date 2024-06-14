@@ -24,6 +24,13 @@ Info on some parameters is given below
    Note: The offset parameter is only useful if the AK has the same starting position respective to the Joints Origin on every startup. This implies that you are getting absolute readings from your Motor that are persistent even on boot up.
 - __Kp__: Sets kp for internal controller for AK Motors. Only used when position control mode is used.
 - __Kd__: Sets kd for internal controller for AK Motors. Only used when velocity control mode is used.
+- __home_on_startup__: Set to 'True' if you want to home on startup. Expects a endstop device that send a CAN message with following details.
+  - ID = 0
+  - LEN = 2
+  - DATA[0] = Motor Node ID
+  - DATA[1] = Endstop State (should be true when detected)
+  Once Endstop send detected signal, the motor assumes that position to be zero. Offset from this zero can be set with the `Offset` param.
+- __homing_torque__: Only used when `home_on_startup` is set to true. Sets torque that is used to move towards endstop. You can change the sign of the torque to change direction of seeking.
 
 ```bash
 <ros2_control name="Wheel" type="actuator">
@@ -38,6 +45,9 @@ Info on some parameters is given below
          <param name="kp">0.0</param>
          <param name="kd">0.0</param>
          <param name="reduction">1.0</param>
+         <param name="offset">0.0</param>
+         <param name="home_on_startup">1.0</param>
+         <param name="homing_torque">1.0</param>
          <param name="offset">0.0</param>
          <state_interface name="position"/>
          <state_interface name="velocity"/>

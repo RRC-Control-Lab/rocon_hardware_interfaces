@@ -26,6 +26,7 @@
 #include <condition_variable>
 #include <array>
 #include <algorithm>
+#include <cmath> 
 
 #include "ak_hardware_interface/visibility_control.h"
 #include "ak_hardware_interface/byte_swap.hpp"
@@ -91,6 +92,11 @@ public:
     const rclcpp_lifecycle::State & previous_state) override;
 
   AK_HARDWARE_INTERFACE_PUBLIC
+  hardware_interface::return_type perform_command_mode_switch(
+    const std::vector<std::string> &,
+    const std::vector<std::string> &) override;
+
+  AK_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::return_type read(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
@@ -107,6 +113,7 @@ private:
   EpollEventLoop event_loop_;
   std::unique_ptr<std::thread> can_event_loop;
   SocketCanIntf can_intf_ = SocketCanIntf();
+  bool activated;
 
   std::unordered_map<std::string, ControlModes> control_modes = {
   {"position",ControlModes::POSITION},
@@ -167,6 +174,11 @@ private:
     double hw_states_positions_rad;
     double hw_states_velocities_rad_s;
     double hw_states_efforts_n_m;
+    double homing_offset;
+    double homing_torque;
+    bool homing_done;
+    bool home_on_startup;
+    bool endstop_state;
   };
 
   std::vector<Motor> motor_;
@@ -188,6 +200,77 @@ private:
     float span = x_max - x_min;
     float offset = x_min;
     return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
+  }
+
+  void send_command(Motor* motor, double position, double velocity, double torque, double kp, double kd)
+  {
+    struct can_frame frame;
+    frame.can_id = motor->node_id;
+    frame.len = 8;
+    
+    position = std::fminf(std::fmaxf(motor->P_min, position), motor->P_max);
+    velocity = std::fminf(std::fmaxf(motor->V_min, velocity), motor->V_max);
+    torque = std::fminf(std::fmaxf(motor->T_min, torque), motor->T_max);
+    kp = std::fminf(std::fmaxf(motor->Kp_min, kp), motor->Kp_max);
+    kd = std::fminf(std::fmaxf(motor->Kd_min, kd), motor->Kd_max);
+
+    /// convert floats to unsigned ints ///
+    uint16_t p_int = float_to_uint(position, motor->P_min, motor->P_max, 16);
+    uint16_t v_int = float_to_uint(velocity, motor->V_min, motor->V_max, 12);
+    uint16_t kp_int = float_to_uint(kp, motor->Kp_min, motor->Kp_max, 12);
+    uint16_t kd_int = float_to_uint(kd, motor->Kd_min, motor->Kd_max, 12);
+    uint16_t t_int = float_to_uint(torque, motor->T_min, motor->T_max, 12);
+    
+    /// pack ints into the can buffer ///
+    frame.data[0] = p_int>>8; // Position 8 higher
+    frame.data[1] = p_int&0xFF; // Position 8 lower
+    frame.data[2] = v_int>>4; // Speed 8 higher
+    frame.data[3] = ((v_int&0xF)<<4)|(kp_int>>8); //Speed 4 bit lower KP 4bit higher
+    frame.data[4] = kp_int&0xFF; // KP 8 bit lower
+    frame.data[5] = kd_int>>4; // Kd 8 bit higher
+    frame.data[6] = ((kd_int&0xF)<<4)|(t_int>>8); // KP 4 bit lower torque 4 bit higher
+    frame.data[7] = t_int&0xff; // torque 4 bit lower
+
+    can_intf_.send_can_frame(frame);
+  }
+
+  void send_position(Motor* motor, double position, double kp)
+  {
+    send_command(motor,position,0.0,0.0,kp,0.0);
+  }
+
+  void send_velocity(Motor* motor, double velocity, double kd)
+  {
+    send_command(motor,0.0,velocity,0.0,0.0,kd);
+  }
+
+  void send_torque(Motor* motor, double torque)
+  {
+    send_command(motor,0.0,0.0,torque,0.0,0.0);
+  }
+
+  void activate_motor(Motor* motor)
+  {
+    struct can_frame frame;
+    frame.can_id = motor->node_id;
+    frame.len = 8;
+
+    const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
+    std::copy(data_values, data_values + 8, frame.data);
+    can_intf_.send_can_frame(frame);
+  }
+
+  void deactivate_motor(Motor* motor)
+  {
+    send_command(motor,0.0,0.0,0.0,0.0,0.0);
+
+    struct can_frame frame;
+    frame.can_id = motor->node_id;
+    frame.len = 8;
+
+    const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
+    std::copy(data_values, data_values + 8, frame.data);
+    can_intf_.send_can_frame(frame);
   }
 };
 
