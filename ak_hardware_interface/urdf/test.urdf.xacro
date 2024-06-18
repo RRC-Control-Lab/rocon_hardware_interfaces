@@ -51,10 +51,10 @@
             <param name="control_mode">torque</param>
             <param name="kp">0.0</param>
             <param name="kd">0.0</param>
-            <param name="reduction">2.0</param>
+            <param name="reduction">1.0</param>
             <param name="offset">0.0</param>
             <param name="home_on_startup">True</param>
-            <param name="homing_torque">1</param>
+            <param name="homing_torque">0.5</param>
             <state_interface name="position"/>
             <state_interface name="velocity"/>
             <command_interface name="effort"/>

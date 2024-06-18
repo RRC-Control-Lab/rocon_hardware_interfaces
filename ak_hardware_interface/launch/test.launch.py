@@ -49,7 +49,7 @@ def generate_launch_description():
     control_node = Node(
         package='controller_manager',
         executable='ros2_control_node',
-        parameters=[robot_description, robot_controllers],
+        parameters=[robot_description, robot_controllers,{'controller_manager_timeout': 30.0}],
         output='both',
         on_exit=Shutdown(),
     )
@@ -77,7 +77,7 @@ def generate_launch_description():
     robot_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['effort_controller', '--controller-manager', '/controller_manager'],
+        arguments=['joint_trajectory_controller', '--controller-manager', '/controller_manager'],
     )
 
     # Delay rviz start after `joint_state_broadcaster`
@@ -100,7 +100,7 @@ def generate_launch_description():
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,
-        delay_rviz_after_joint_state_broadcaster_spawner,
+        # delay_rviz_after_joint_state_broadcaster_spawner,
         delay_robot_controller_spawner_after_joint_state_broadcaster_spawner,
     ]
 

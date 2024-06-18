@@ -267,6 +267,7 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_configure(
     motor_[i].wrap_offset = 0;
     motor_[i].homing_offset = 0;
     motor_[i].endstop_state = false;
+    motor_[i].endstop_detected = false;
     motor_[i].homing_done = false;
   }
   RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "Successfully configured!");
@@ -309,24 +310,6 @@ std::vector<hardware_interface::CommandInterface> AKHardwareInterface::export_co
 
   return command_interfaces;
 }
-hardware_interface::return_type AKHardwareInterface::perform_command_mode_switch(
-  const std::vector<std::string> &,
-  const std::vector<std::string> &)
-{
-  for (size_t i = 0; i < info_.joints.size(); i++) {
-    if (motor_[i].home_on_startup)
-    {
-      send_torque(&motor_[i],motor_[i].homing_torque);
-      while(!motor_[i].endstop_state);
-      send_torque(&motor_[i],0.0);
-      motor_[i].homing_offset = motor_[i].raw_position_rad;
-      motor_[i].homing_done = true;
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "Homing Offset for '%s' detected as %lf",info_.joints[i].name.c_str(),motor_[i].homing_offset);
-    }
-  }
-  return hardware_interface::return_type::OK;
-}
 
 hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
@@ -348,9 +331,20 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
 
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    activate_motor(&motor_[i]);
+    while(!activate_motor(&motor_[i]));
+
+    if(motor_[i].home_on_startup)
+    {
+      while(!send_torque(&motor_[i],motor_[i].homing_torque));
+      while(!motor_[i].endstop_state);
+      motor_[i].homing_offset = motor_[i].raw_position_rad;
+      while(!send_torque(&motor_[i],0.0));
+      RCLCPP_INFO(
+        rclcpp::get_logger("AKHardwareInterface"), "Homing Offset for '%s' detected as %lf",info_.joints[i].name.c_str(),motor_[i].homing_offset);
+      while(motor_[i].raw_velocity_rad_s>1e-2);
+      motor_[i].homing_done = true;
+    }
   }
-  std::this_thread::sleep_for(std::chrono::seconds(3));
   activated = true;
   return CallbackReturn::SUCCESS;
 }
@@ -369,15 +363,16 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
             "Incorrect frame length received from motor with ID: %d. %d != 2 or 6 or 8", frame.can_id, frame.len);
       continue;
     }
+    motor_[i].response_received = true;
     if(frame.len == 8)
     {
       motor_[i].current_temp = int(frame.data[6]);
       motor_[i].error_code = int(frame.data[7]);
     }
-    if(frame.len == 2)
+    if((frame.len == 2))
     {
       motor_[i].endstop_state = bool(frame.data[1]);
-      return;
+      continue;
     }
 
     uint32_t position_uint = frame.data[1] <<8 | frame.data[2];
@@ -426,10 +421,6 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_deactivate(
 hardware_interface::return_type AKHardwareInterface::read(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
-  if(!activated)
-  {
-    return hardware_interface::return_type::OK;
-  }
   for (uint i = 0; i < info_.joints.size(); i++)
   {
     if(motor_[i].error_code!=0)
@@ -456,13 +447,10 @@ hardware_interface::return_type AKHardwareInterface::write(
   {
     return hardware_interface::return_type::OK;
   }
+
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    if(motor_[i].home_on_startup && (!motor_[i].homing_done))
-    {
-      continue;
-    }
-    double position = (motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction;
+    double position = ((motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction) - motor_[i].homing_offset;
     double velocity = motor_[i].hw_commands_velocities_rad_s * motor_[i].reduction;
     double torque = motor_[i].hw_commands_efforts_n_m / motor_[i].reduction;
     double kp = motor_[i].kp;

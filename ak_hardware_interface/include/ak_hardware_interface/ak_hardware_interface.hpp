@@ -92,11 +92,6 @@ public:
     const rclcpp_lifecycle::State & previous_state) override;
 
   AK_HARDWARE_INTERFACE_PUBLIC
-  hardware_interface::return_type perform_command_mode_switch(
-    const std::vector<std::string> &,
-    const std::vector<std::string> &) override;
-
-  AK_HARDWARE_INTERFACE_PUBLIC
   hardware_interface::return_type read(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
@@ -179,6 +174,8 @@ private:
     bool homing_done;
     bool home_on_startup;
     bool endstop_state;
+    bool endstop_detected;
+    bool response_received;
   };
 
   std::vector<Motor> motor_;
@@ -202,8 +199,9 @@ private:
     return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
   }
 
-  void send_command(Motor* motor, double position, double velocity, double torque, double kp, double kd)
+  bool send_command(Motor* motor, double position, double velocity, double torque, double kp, double kd)
   {
+    motor->response_received = false;
     struct can_frame frame;
     frame.can_id = motor->node_id;
     frame.len = 8;
@@ -232,25 +230,27 @@ private:
     frame.data[7] = t_int&0xff; // torque 4 bit lower
 
     can_intf_.send_can_frame(frame);
+    return motor->response_received;
   }
 
-  void send_position(Motor* motor, double position, double kp)
+  bool send_position(Motor* motor, double position, double kp)
   {
-    send_command(motor,position,0.0,0.0,kp,0.0);
+    return send_command(motor,position,0.0,0.0,kp,0.0);
   }
 
-  void send_velocity(Motor* motor, double velocity, double kd)
+  bool send_velocity(Motor* motor, double velocity, double kd)
   {
-    send_command(motor,0.0,velocity,0.0,0.0,kd);
+    return send_command(motor,0.0,velocity,0.0,0.0,kd);
   }
 
-  void send_torque(Motor* motor, double torque)
+  bool send_torque(Motor* motor, double torque)
   {
-    send_command(motor,0.0,0.0,torque,0.0,0.0);
+    return send_command(motor,0.0,0.0,torque,0.0,0.0);
   }
 
-  void activate_motor(Motor* motor)
+  bool activate_motor(Motor* motor)
   {
+    motor->response_received = false;
     struct can_frame frame;
     frame.can_id = motor->node_id;
     frame.len = 8;
@@ -258,11 +258,14 @@ private:
     const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
     std::copy(data_values, data_values + 8, frame.data);
     can_intf_.send_can_frame(frame);
+    
+    return motor->response_received;
   }
 
-  void deactivate_motor(Motor* motor)
+  bool deactivate_motor(Motor* motor)
   {
-    send_command(motor,0.0,0.0,0.0,0.0,0.0);
+    motor->response_received = false;
+    while(!send_command(motor,0.0,0.0,0.0,0.0,0.0));
 
     struct can_frame frame;
     frame.can_id = motor->node_id;
@@ -271,6 +274,8 @@ private:
     const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
     std::copy(data_values, data_values + 8, frame.data);
     can_intf_.send_can_frame(frame);
+    
+    return motor->response_received;
   }
 };
 
