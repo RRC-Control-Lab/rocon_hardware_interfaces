@@ -332,6 +332,8 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   for (uint i = 0; i < info_.joints.size(); i++)
   {
     RCLCPP_INFO(
+      rclcpp::get_logger("AKHardwareInterface"), "'%s': Joint Size = %d",info_.joints[i].name.c_str(),info_.joints.size());
+    RCLCPP_INFO(
       rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Activate Command",info_.joints[i].name.c_str());
     while(!activate_motor(&motor_[i]));
     RCLCPP_INFO(
@@ -357,6 +359,8 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
       motor_[i].homing_done = true;
     }
   }
+  RCLCPP_INFO(
+    rclcpp::get_logger("AKHardwareInterface"), "Done with For loop");
   activated = true;
   return CallbackReturn::SUCCESS;
 }
