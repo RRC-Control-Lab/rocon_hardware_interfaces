@@ -343,12 +343,14 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
     {
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Homing Torque",info_.joints[i].name.c_str());
-      while(!send_torque(&motor_[i],motor_[i].homing_torque));
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Reply",info_.joints[i].name.c_str());
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Waiting for Endstop",info_.joints[i].name.c_str());
-      while(!motor_[i].endstop_state);
+      while(!motor_[i].endstop_state)
+      {
+        while(!send_torque(&motor_[i],motor_[i].homing_torque));
+      }
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Endstop",info_.joints[i].name.c_str());
       motor_[i].homing_offset = motor_[i].raw_position_rad;
