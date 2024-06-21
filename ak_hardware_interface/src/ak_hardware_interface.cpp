@@ -337,7 +337,6 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
       rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Activate Command",info_.joints[i].name.c_str());
     while(!activate_motor(&motor_[i]))
     {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     RCLCPP_INFO(
       rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Reply",info_.joints[i].name.c_str());
@@ -353,7 +352,6 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
       while(!motor_[i].endstop_state)
       {
         while(!send_torque(&motor_[i],motor_[i].homing_torque));
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Endstop",info_.joints[i].name.c_str());
@@ -365,7 +363,6 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
       while(fabs(motor_[i].raw_velocity_rad_s)>1)
       {
         while(!send_torque(&motor_[i],0.0));
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Speed Down",info_.joints[i].name.c_str());
