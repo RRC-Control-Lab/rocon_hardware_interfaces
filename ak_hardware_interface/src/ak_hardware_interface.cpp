@@ -361,10 +361,11 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Waiting for Speed Down",info_.joints[i].name.c_str());
 
+      do
+      {
         while(!send_torque(&motor_[i],0.0));
-      // while(fabs(motor_[i].raw_velocity_rad_s)>1)
-      // {
-      // }
+      }while(fabs(motor_[i].raw_velocity_rad_s)>1);
+      
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Speed Down",info_.joints[i].name.c_str());
       motor_[i].homing_done = true;
