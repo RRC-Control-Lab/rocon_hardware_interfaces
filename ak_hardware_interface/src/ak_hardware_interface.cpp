@@ -331,41 +331,19 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
 
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    RCLCPP_INFO(
-      rclcpp::get_logger("AKHardwareInterface"), "'%s': Joint Size = %ld",info_.joints[i].name.c_str(),info_.joints.size());
-    RCLCPP_INFO(
-      rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Activate Command",info_.joints[i].name.c_str());
-    while(!activate_motor(&motor_[i]))
-    {
-    }
-    RCLCPP_INFO(
-      rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Reply",info_.joints[i].name.c_str());
+    activate_motor(&motor_[i]);
 
     if(motor_[i].home_on_startup)
     {
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Homing Torque",info_.joints[i].name.c_str());
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Reply",info_.joints[i].name.c_str());
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Waiting for Endstop",info_.joints[i].name.c_str());
-      while(!motor_[i].endstop_state)
-      {
-        while(!send_torque(&motor_[i],motor_[i].homing_torque));
+      send_torque(&motor_[i],motor_[i].homing_torque)
+      while(!motor_[i].endstop_state);
       }
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Endstop",info_.joints[i].name.c_str());
       motor_[i].homing_offset = motor_[i].raw_position_rad;
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "Homing Offset for '%s' detected as %lf",info_.joints[i].name.c_str(),motor_[i].homing_offset);
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Waiting for Speed Down",info_.joints[i].name.c_str());
-
       do
       {
-        while(!send_torque(&motor_[i],0.0));
+        send_torque(&motor_[i],0.0);
       }while(fabs(motor_[i].raw_velocity_rad_s)>1);
-      
+
       RCLCPP_INFO(
         rclcpp::get_logger("AKHardwareInterface"), "'%s': Speed Down",info_.joints[i].name.c_str());
       motor_[i].homing_done = true;
