@@ -335,15 +335,9 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
 
     if(motor_[i].home_on_startup)
     {
-      while(!send_torque(&motor_[i],motor_[i].homing_torque))
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
+      while(!send_torque(&motor_[i],motor_[i].homing_torque));
       while(!motor_[i].endstop_state);
-      while(!send_torque(&motor_[i],0.0))
-      {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
+      while(!send_torque(&motor_[i],0.0));
       motor_[i].homing_done = true;
     }
   }
