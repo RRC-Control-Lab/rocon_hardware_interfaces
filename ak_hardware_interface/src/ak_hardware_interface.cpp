@@ -335,9 +335,8 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
 
     if(motor_[i].home_on_startup)
     {
-      send_torque(&motor_[i],motor_[i].homing_torque)
+      send_torque(&motor_[i],motor_[i].homing_torque);
       while(!motor_[i].endstop_state);
-      }
       motor_[i].homing_offset = motor_[i].raw_position_rad;
       do
       {
