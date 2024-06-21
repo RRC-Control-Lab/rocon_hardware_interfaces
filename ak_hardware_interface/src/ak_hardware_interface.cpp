@@ -384,6 +384,8 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
     if((frame.len == 2))
     {
       motor_[i].endstop_state = bool(frame.data[1]);
+      RCLCPP_INFO(
+        rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Endstop as %d",info_.joints[i].name.c_str(),motor_[i].endstop_state);
       continue;
     }
 
