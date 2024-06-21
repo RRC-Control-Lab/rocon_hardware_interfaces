@@ -332,10 +332,10 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   for (uint i = 0; i < info_.joints.size(); i++)
   {
     RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Activation",info_.joints[i].name.c_str());
+      rclcpp::get_logger("AKHardwareInterface"), "'%s': Sending Activate Command",info_.joints[i].name.c_str());
     while(!activate_motor(&motor_[i]));
-      RCLCPP_INFO(
-        rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Reply",info_.joints[i].name.c_str());
+    RCLCPP_INFO(
+      rclcpp::get_logger("AKHardwareInterface"), "'%s': Got Reply",info_.joints[i].name.c_str());
 
     if(motor_[i].home_on_startup)
     {
