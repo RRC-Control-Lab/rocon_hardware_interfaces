@@ -332,6 +332,10 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   for (uint i = 0; i < info_.joints.size(); i++)
   {
     activate_motor(&motor_[i]);
+    
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    
+    while(!send_torque(&motor_[i],0.0));
 
     if(motor_[i].home_on_startup)
     {
