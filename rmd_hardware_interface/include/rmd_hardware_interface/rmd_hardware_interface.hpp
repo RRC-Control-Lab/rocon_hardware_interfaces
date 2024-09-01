@@ -38,30 +38,75 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp_lifecycle/state.hpp"
 
+#define DEG2RAD (2 * M_PI)/360.0
+#define RAD2DEG 360.0/(2 * M_PI)
+#define SINGLEMOTOR 0x140
+#define MULTIMOTOR 0x280
+
 namespace rmd_hardware_interface
 {
   enum Params : uint32_t 
   {
-    P_min,
-    P_max,
-    V_min,
-    V_max,
-    T_min,
-    T_max,
-    Kp_min,
-    Kp_max,
-    Kd_min,
-    Kd_max,
-    Kt_TMotor,
-    Current_Factor,
-    Kt_actual,
-    GEAR_RATIO
+    torque_constant,
+    max_velocity,
+    gear_ratio,
+    range,
   };
   enum ControlModes : uint32_t 
   {
     TORQUE,
     VELOCITY,
     POSITION
+  };
+  enum CommandIDs : uint32_t 
+  {
+    read_pos_kp = 0x30,
+    read_pos_ki = 0x31,
+    read_vel_kp = 0x32,
+    read_vel_ki = 0x33,
+    read_torque_kp = 0x34,
+    read_torque_ki = 0x35,
+    write_pos_kp_ram = 0x36,
+    write_pos_ki_ram = 0x37,
+    write_vel_kp_ram = 0x38,
+    write_vel_ki_ram = 0x39,
+    write_torque_kp_ram = 0x3A,
+    write_torque_ki_ram = 0x3B,
+    write_pos_kp_rom = 0x3C,
+    write_pos_ki_rom = 0x3D,
+    write_vel_kp_rom = 0x3E,
+    write_vel_ki_rom = 0x3F,
+    write_torque_kp_rom = 0x40,
+    write_torque_ki_rom = 0x41,
+    read_acc = 0x42,
+    write_acc_ram = 0x43,
+    read_multiturn_counts = 0x60,
+    read_multiturn_counts_raw = 0x61,
+    read_multiturn_counts_offset = 0x62,
+    write_custom_pos_aszero_rom = 0x63,
+    write_current_pos_aszero_rom = 0x64,
+    read_multiturn_angles = 0x92,
+    read_motor_status_1 = 0x9A,
+    read_motor_status_2 = 0x9C,
+    read_motor_status_3 = 0x9D,
+    motor_off = 0x80,
+    motor_stop = 0x81,
+    motor_run = 0x88,
+    torque_closed_loop = 0xA1,
+    velocity_closed_loop = 0xA2,
+    position_closed_loop_1 = 0xA3,
+    position_closed_loop_2 = 0xA4,
+    position_closed_loop_3 = 0xA5,
+    position_closed_loop_4 = 0xA6,
+    multiturn_incremental_pos = 0xA7,
+    read_running_mode = 0x70,
+    read_power_status = 0x71,
+    read_battery_voltage = 0x72,
+    write_feedforward  = 0x73,
+    system_reset = 0x76,
+    open_brake = 0x77,
+    close_brake = 0x78,
+    readwrite_can_id = 0x79,
   };
 class RMDHardwareInterface : public hardware_interface::ActuatorInterface
 {
@@ -116,45 +161,40 @@ private:
   {"torque",ControlModes::TORQUE}};
 
   std::unordered_map<int, std::string> error_codes_ = {
-  {0, "No Error"},
-  {1, "Over temperature fault"},
-  {2, "Over current fault"},
-  {3, "Over voltage fault"},
-  {4, "Under voltage fault"},
-  {5, "Encoder fault"},
-  {6, "Phase current unbalance fault (The hardware may be damaged)"}};
+  {0x0000, "Hardware Over Current"},
+  {0x0002, "Motor Stalled"},
+  {0x0004, "Low Voltage"},
+  {0x0008, "Over Voltage"},
+  {0x0010, "Over Current"},
+  {0x0020, "Brake Opening Failed"},
+  {0x0040, "Bus Current Error"},
+  {0x0080, "Battery Voltage Error"},
+  {0x0100, "Overspeed"},
+  {0x0200, "Position Loop Exceeded Error"},
+  {0x0400, "VDD Error"},
+  {0x0800, "DSP Internal Sensor Temperature is Overheated"},
+  {0x1000, "Motor Temperature is Overheated"},
+  {0x2000, "Encoder Calibration Error"},
+  {0x00F0, "PID parameter write ROM protection, non-safe operation"},
+  {0x00F1, "Encoder value is written into ROM protection, non-safe operation"},
+  {0x00F2, "Three-loop switching operation error, non-safe operation"},
+  {0x00F3, "Motor brake is not open"},
+  {0x00F4, "Motor write ROM protection, non-safe operation"},};
   
   std::unordered_map<std::string, std::vector<double>> supported_motors_ = {
-  {"RMD80_9",  {-12.5,12.5,-50.0,50.0,-18.0,18.0,0.0,500.0,0.0,5.0,0.091,0.59,0.115,9.0}},
-  {"RMD10_9",  {-12.5,12.5,-50.0,50.0,-65.0,65.0,0.0,500.0,0.0,5.0,0.160,0.59,0.206,9.0}},
-  {"RMD60_6",  {-12.5,12.5,-50.0,50.0,-15.0,15.0,0.0,500.0,0.0,5.0,0.068,0.59,0.087,6.0}},
-  {"RMD70_10", {-12.5,12.5,-50.0,50.0,-25.0,25.0,0.0,500.0,0.0,5.0,0.095,0.59,0.122,10.0}},
-  {"RMD80_6",  {-12.5,12.5,-76.0,76.0,-12.0,12.0,0.0,500.0,0.0,5.0,0.091,0.59,0.017,6.0}},
-  {"RMD80_64", {-12.5,12.5,-8.0,8.0,-144.0,144.0,0.0,500.0,0.0,5.0,0.119,0.59,0.153,80.0}}};
+  {"RMDX8_19",  {2.09,22.5,9,83290.3562}}};
   
   struct Motor {
     uint32_t node_id;
+    uint16_t error_code;
     std::string model;
-    uint8_t current_temp;
-    uint8_t error_code;
-    uint8_t control_mode;
-    double kp;
-    double kd;
-    double P_min;
-    double P_max;
-    double V_min;
-    double V_max;
-    double T_min;
-    double T_max;
-    double Kp_min;
-    double Kp_max;
-    double Kd_min;
-    double Kd_max;
-    double Kt_TMotor;
-    double Current_Factor;
-    double Kt_actual;
-    double GEAR_RATIO;
-    double Range;
+    ControlModes control_mode;
+    double pos_kp;
+    double pos_ki;
+    double speed_kp;
+    double speed_ki;
+    double current_kp;
+    double current_ki;
     double reduction;
     double offset;
     double wrap_offset;
@@ -163,6 +203,7 @@ private:
     double raw_position_rad;
     double raw_velocity_rad_s;
     double raw_torque_n_m;
+    double raw_acceleration_rad_ss;
     double hw_commands_positions_rad;
     double hw_commands_velocities_rad_s;
     double hw_commands_efforts_n_m;
@@ -171,6 +212,11 @@ private:
     double hw_states_efforts_n_m;
     double homing_offset;
     double homing_torque;
+    double torque_constant;
+    double max_velocity;
+    double gear_ratio;
+    double range;
+    int8_t temperature;
     bool homing_done;
     bool home_on_startup;
     bool endstop_state;
@@ -180,103 +226,59 @@ private:
 
   std::vector<Motor> motor_;
 
-  int float_to_uint(float x, float x_min, float x_max, unsigned int bits)
-  {
-    /// Converts a float to an unsigned int, given range and number of bits ///
-    float span = x_max - x_min;
-    float bitratio = (1 << bits) / span;
-    
-    x = std::clamp(x, x_min, x_max - (2 / bitratio));
-    
-    return static_cast<uint32_t>(std::clamp((x - x_min) * bitratio, (float)0.0, (x_max - x_min) * bitratio));
+  double map(double value, double fromLow, double fromHigh, double toLow, double toHigh) {
+    return (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow;
   }
 
-  float uint_to_float(int x_int, float x_min, float x_max, int bits)
+  void continuous_pos(Motor* motor, double discontinuous_pos)
   {
-    /// converts unsigned int to float, given range and number of bits ///
-    float span = x_max - x_min;
-    float offset = x_min;
-    return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
+    // Logic to convert discontinuous counts into continuous counts by detecting wraparound
+    motor->prev_wrap_position_rad = motor->curr_wrap_position_rad;
+    motor->curr_wrap_position_rad = discontinuous_pos;
+    double delta =  motor->curr_wrap_position_rad - motor->prev_wrap_position_rad;
+    if (std::abs(delta)>(motor->range/2))
+    {
+      if (delta > 0) {
+          motor->wrap_offset -= (motor->range);
+      } else {
+          motor->wrap_offset += (motor->range);
+      }
+    }
+    motor->raw_position_rad = motor->wrap_offset + motor->curr_wrap_position_rad - motor->homing_offset;
   }
 
-  bool send_command(Motor* motor, double position, double velocity, double torque, double kp, double kd)
+  void request(Motor* motor, CommandIDs command_id)
   {
-    motor->response_received = false;
     struct can_frame frame;
-    frame.can_id = motor->node_id;
+    frame.can_id = SINGLEMOTOR|motor->node_id;
     frame.len = 8;
-    
-    position = std::fminf(std::fmaxf(motor->P_min, position), motor->P_max);
-    velocity = std::fminf(std::fmaxf(motor->V_min, velocity), motor->V_max);
-    torque = std::fminf(std::fmaxf(motor->T_min, torque), motor->T_max);
-    kp = std::fminf(std::fmaxf(motor->Kp_min, kp), motor->Kp_max);
-    kd = std::fminf(std::fmaxf(motor->Kd_min, kd), motor->Kd_max);
-
-    /// convert floats to unsigned ints ///
-    uint16_t p_int = float_to_uint(position, motor->P_min, motor->P_max, 16);
-    uint16_t v_int = float_to_uint(velocity, motor->V_min, motor->V_max, 12);
-    uint16_t kp_int = float_to_uint(kp, motor->Kp_min, motor->Kp_max, 12);
-    uint16_t kd_int = float_to_uint(kd, motor->Kd_min, motor->Kd_max, 12);
-    uint16_t t_int = float_to_uint(torque, motor->T_min, motor->T_max, 12);
-    
-    /// pack ints into the can buffer ///
-    frame.data[0] = p_int>>8; // Position 8 higher
-    frame.data[1] = p_int&0xFF; // Position 8 lower
-    frame.data[2] = v_int>>4; // Speed 8 higher
-    frame.data[3] = ((v_int&0xF)<<4)|(kp_int>>8); //Speed 4 bit lower KP 4bit higher
-    frame.data[4] = kp_int&0xFF; // KP 8 bit lower
-    frame.data[5] = kd_int>>4; // Kd 8 bit higher
-    frame.data[6] = ((kd_int&0xF)<<4)|(t_int>>8); // KP 4 bit lower torque 4 bit higher
-    frame.data[7] = t_int&0xff; // torque 4 bit lower
-
-    can_intf_.send_can_frame(frame);
-    return motor->response_received;
+    memset(frame.data, 0, sizeof(frame.data));
+    frame.data[0] = static_cast<uint8_t>(command_id);
+    can_intf_.send_can_frame(frame); 
   }
 
-  bool send_position(Motor* motor, double position, double kp)
+  void send_torque(Motor* motor, double torque_nm)
   {
-    return send_command(motor,position,0.0,0.0,kp,0.0);
-  }
-
-  bool send_velocity(Motor* motor, double velocity, double kd)
-  {
-    return send_command(motor,0.0,velocity,0.0,0.0,kd);
-  }
-
-  bool send_torque(Motor* motor, double torque)
-  {
-    return send_command(motor,0.0,0.0,torque,0.0,0.0);
-  }
-
-  bool activate_motor(Motor* motor)
-  {
-    motor->response_received = false;
     struct can_frame frame;
-    frame.can_id = motor->node_id;
+    frame.can_id = SINGLEMOTOR|motor->node_id;
     frame.len = 8;
-
-    const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
-    std::copy(data_values, data_values + 8, frame.data);
-    can_intf_.send_can_frame(frame);
-    
-    return motor->response_received;
+    memset(frame.data, 0, sizeof(frame.data));
+    frame.data[0] = CommandIDs::torque_closed_loop;
+    write_le<int16_t>((int)map(torque_nm/motor->torque_constant,-32,32,-2000,2000), frame.data + 4);
+    can_intf_.send_can_frame(frame); 
   }
 
-  bool deactivate_motor(Motor* motor)
+  void send_vel(Motor* motor, double speed_rad_s)
   {
-    motor->response_received = false;
-    while(!send_command(motor,0.0,0.0,0.0,0.0,0.0));
-
     struct can_frame frame;
-    frame.can_id = motor->node_id;
+    frame.can_id = SINGLEMOTOR|motor->node_id;
     frame.len = 8;
-
-    const uint8_t data_values[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
-    std::copy(data_values, data_values + 8, frame.data);
-    can_intf_.send_can_frame(frame);
-    
-    return motor->response_received;
+    memset(frame.data, 0, sizeof(frame.data));
+    frame.data[0] = CommandIDs::velocity_closed_loop;
+    write_le<int32_t>((int32_t)(speed_rad_s*RAD2DEG*100.0*motor->gear_ratio), frame.data + 4);
+    can_intf_.send_can_frame(frame); 
   }
+
 };
 
 }  // namespace rmd_hardware_interface

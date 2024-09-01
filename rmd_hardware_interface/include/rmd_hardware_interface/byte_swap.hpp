@@ -44,4 +44,17 @@ void write_le(const T & val, const unsigned char * buf)
     maybe_byteswap<std::endian::little>(val);
 }
 
+template<typename T>
+T read_be(const unsigned char * buf)
+{
+  return maybe_byteswap<std::endian::big>(*reinterpret_cast<const T *>(buf));
+}
+
+template<typename T>
+void write_be(const T & val, const unsigned char * buf)
+{
+  *reinterpret_cast<T *>(const_cast<unsigned char *>(buf)) =
+    maybe_byteswap<std::endian::big>(val);
+}
+
 #endif  // RMD_HARDWARE_INTERFACE__BYTE_SWAP_HPP_

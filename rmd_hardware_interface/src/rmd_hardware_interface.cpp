@@ -71,7 +71,7 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
       RCLCPP_FATAL(
         rclcpp::get_logger(
           "RMDHardwareInterface"),
-        "Parameter 'model' not set for '%s'. Valid values are RMD80_9, RMD10_9, RMD60_6, RMD70_10, RMD80_6, RMD80_64.",
+        "Parameter 'model' not set for '%s'. Valid values are 'RMDX8_19'.",
         info_.joints[i].name.c_str());
       return hardware_interface::CallbackReturn::ERROR;
     }
@@ -130,44 +130,6 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
           "RMDHardwareInterface"),
         "Parameter 'offset' set for '%s' to %lf.",
         info_.joints[i].name.c_str(),motor_[i].offset);
-    }
-    it = info_.joints[i].parameters.find("kp");
-    if (it == info_.joints[i].parameters.end())
-    {
-      RCLCPP_INFO(
-        rclcpp::get_logger(
-          "RMDHardwareInterface"),
-        "Parameter 'kp' not set for '%s'. Defaulting to 0.0.",
-        info_.joints[i].name.c_str());
-      motor_[i].kp = 0.0;
-    }
-    else
-    {
-      motor_[i].kp = std::stod(it->second);
-      RCLCPP_INFO(
-        rclcpp::get_logger(
-          "RMDHardwareInterface"),
-        "Parameter 'kp' set for '%s' to %lf.",
-        info_.joints[i].name.c_str(),motor_[i].kp);
-    }
-    it = info_.joints[i].parameters.find("kd");
-    if (it == info_.joints[i].parameters.end())
-    {
-      RCLCPP_INFO(
-        rclcpp::get_logger(
-          "RMDHardwareInterface"),
-        "Parameter 'kd' not set for '%s'. Defaulting to 0.0.",
-        info_.joints[i].name.c_str());
-      motor_[i].kd = 0.0;
-    }
-    else
-    {
-      motor_[i].kd = std::stod(it->second);
-      RCLCPP_INFO(
-        rclcpp::get_logger(
-          "RMDHardwareInterface"),
-        "Parameter 'kd' set for '%s' to %lf.",
-        info_.joints[i].name.c_str(),motor_[i].kd);
     }
     it = info_.joints[i].parameters.find("home_on_startup");
     if (it == info_.joints[i].parameters.end()) {
@@ -228,21 +190,10 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
 
   // Initialise Motor Params
   for (uint i = 0; i < info_.joints.size(); i++) {
-    motor_[i].P_min = supported_motors_.at(motor_[i].model)[Params::P_min];
-    motor_[i].P_max = supported_motors_.at(motor_[i].model)[Params::P_max];
-    motor_[i].V_min = supported_motors_.at(motor_[i].model)[Params::V_min];
-    motor_[i].V_max = supported_motors_.at(motor_[i].model)[Params::V_max];
-    motor_[i].T_min = supported_motors_.at(motor_[i].model)[Params::T_min];
-    motor_[i].T_max = supported_motors_.at(motor_[i].model)[Params::T_max];
-    motor_[i].Kp_min = supported_motors_.at(motor_[i].model)[Params::Kp_min];
-    motor_[i].Kp_max = supported_motors_.at(motor_[i].model)[Params::Kp_max];
-    motor_[i].Kd_min = supported_motors_.at(motor_[i].model)[Params::Kd_min];
-    motor_[i].Kd_max = supported_motors_.at(motor_[i].model)[Params::Kd_max];
-    motor_[i].Kt_TMotor = supported_motors_.at(motor_[i].model)[Params::Kt_TMotor];
-    motor_[i].Current_Factor = supported_motors_.at(motor_[i].model)[Params::Current_Factor];
-    motor_[i].Kt_actual = supported_motors_.at(motor_[i].model)[Params::Kt_actual];
-    motor_[i].GEAR_RATIO = supported_motors_.at(motor_[i].model)[Params::GEAR_RATIO];
-    motor_[i].Range = motor_[i].P_max- motor_[i].P_min;
+    motor_[i].torque_constant = supported_motors_.at(motor_[i].model)[Params::torque_constant];
+    motor_[i].max_velocity = supported_motors_.at(motor_[i].model)[Params::max_velocity];
+    motor_[i].gear_ratio = supported_motors_.at(motor_[i].model)[Params::gear_ratio];
+    motor_[i].range = supported_motors_.at(motor_[i].model)[Params::range];
   }
 
   activated = false;
@@ -331,22 +282,20 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_activate(
 
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    activate_motor(&motor_[i]);
-    
+    request(&motor_[i],CommandIDs::motor_off);
+    request(&motor_[i],CommandIDs::open_brake);
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    
-    while(!send_torque(&motor_[i],0.0));
+    request(&motor_[i],CommandIDs::motor_run);
 
     if(motor_[i].home_on_startup)
     {
-      while(!send_torque(&motor_[i],motor_[i].homing_torque));
-      while(!motor_[i].endstop_state);
-      while(!send_torque(&motor_[i],0.0));
-      motor_[i].homing_done = true;
+      // TODO: Implement homing procedure with velocity
+      // while(!send_torque(&motor_[i],motor_[i].homing_torque));
+      // while(!motor_[i].endstop_state);
+      // while(!send_torque(&motor_[i],0.0));
+      // motor_[i].homing_done = true;
     }
   }
-  RCLCPP_INFO(
-    rclcpp::get_logger("RMDHardwareInterface"), "Done with For loop");
   activated = true;
   return CallbackReturn::SUCCESS;
 }
@@ -355,21 +304,15 @@ void RMDHardwareInterface::recv_callback(const can_frame & frame)
 {
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    if ((frame.data[0]) != motor_[i].node_id)
+    if((frame.can_id&0x1F) != motor_[i].node_id)
     {
       continue;
     }
-    if ((frame.len!=6)&&(frame.len!=8)&&(frame.len!=2))
+    if ((frame.len!=8)&&(frame.len!=2))
     {
       RCLCPP_WARN(rclcpp::get_logger("RMDHardwareInterface"),
-            "Incorrect frame length received from motor with ID: %d. %d != 2 or 6 or 8", frame.can_id, frame.len);
+            "Incorrect frame length received from motor/endstop with ID: %d. %d != 8(motor) or 2(endstop)", frame.can_id, frame.len);
       continue;
-    }
-    motor_[i].response_received = true;
-    if(frame.len == 8)
-    {
-      motor_[i].current_temp = int(frame.data[6]);
-      motor_[i].error_code = int(frame.data[7]);
     }
     if((frame.len == 2))
     {
@@ -378,27 +321,68 @@ void RMDHardwareInterface::recv_callback(const can_frame & frame)
         rclcpp::get_logger("RMDHardwareInterface"), "'%s': Got Endstop as %d",info_.joints[i].name.c_str(),motor_[i].endstop_state);
       continue;
     }
+    motor_[i].response_received = true;
 
-    uint32_t position_uint = frame.data[1] <<8 | frame.data[2];
-    uint32_t velocity_uint = ((frame.data[3] << 8) | (frame.data[4]>>4) <<4 ) >> 4;
-    uint32_t torque_uint = (frame.data[4]&0x0F)<<8 | frame.data[5];
-
-    motor_[i].raw_velocity_rad_s = uint_to_float(velocity_uint,motor_[i].V_min,motor_[i].V_max,12);
-    motor_[i].raw_torque_n_m = uint_to_float(torque_uint,motor_[i].T_min,motor_[i].T_max,12);
-
-    // Logic to convert discontinuous counts into continuous counts by detecting wraparound
-    motor_[i].prev_wrap_position_rad = motor_[i].curr_wrap_position_rad;
-    motor_[i].curr_wrap_position_rad = uint_to_float(position_uint,motor_[i].P_min,motor_[i].P_max,16);
-    double delta =  motor_[i].curr_wrap_position_rad - motor_[i].prev_wrap_position_rad;
-    if (std::abs(delta)>(motor_[i].Range/2))
+    switch(frame.data[0])
     {
-      if (delta > 0) {
-          motor_[i].wrap_offset -= (motor_[i].Range);
-      } else {
-          motor_[i].wrap_offset += (motor_[i].Range);
-      }
+      case CommandIDs::read_pos_kp:
+      break;
+      case CommandIDs::read_pos_ki:
+      break;
+      case CommandIDs::read_vel_kp:
+      break;
+      case CommandIDs::read_vel_ki:
+      break;
+      case CommandIDs::read_torque_kp:
+      break;
+      case CommandIDs::read_torque_ki:
+      break;
+      case CommandIDs::read_acc:
+      break;
+      case CommandIDs::read_multiturn_counts:
+      break;
+      case CommandIDs::read_multiturn_counts_raw:
+      break;
+      case CommandIDs::read_multiturn_counts_offset:
+      break;
+      case CommandIDs::read_multiturn_angles:
+        continuous_pos(&motor_[i],((read_le<uint32_t>(frame.data + 4))/(100.0*motor_[i].gear_ratio))*DEG2RAD);
+      break;
+      case CommandIDs::read_motor_status_1:
+      break;
+      case CommandIDs::read_motor_status_2:
+      break;
+      case CommandIDs::read_motor_status_3:
+      break;
+      case CommandIDs::torque_closed_loop:
+        motor_[i].temperature = frame.data[0];
+        motor_[i].raw_torque_n_m = map(read_le<int16_t>(frame.data + 2),-2048,2048,-33,33)*motor_[i].torque_constant;
+        motor_[i].raw_velocity_rad_s = (read_le<int16_t>(frame.data + 4)/motor_[i].gear_ratio)*DEG2RAD;
+      break;
+      case CommandIDs::velocity_closed_loop:
+        motor_[i].temperature = frame.data[0];
+        motor_[i].raw_torque_n_m = map(read_le<int16_t>(frame.data + 2),-2048,2048,-33,33)*motor_[i].torque_constant;
+        motor_[i].raw_velocity_rad_s = (read_le<int16_t>(frame.data + 4)/motor_[i].gear_ratio)*DEG2RAD;
+      break;
+      case CommandIDs::position_closed_loop_1:
+      break;
+      case CommandIDs::position_closed_loop_2:
+      break;
+      case CommandIDs::position_closed_loop_3:
+      break;
+      case CommandIDs::position_closed_loop_4:
+      break;
+      case CommandIDs::multiturn_incremental_pos:
+      break;
+      case CommandIDs::read_running_mode:
+      break;
+      case CommandIDs::read_power_status:
+      break;
+      case CommandIDs::read_battery_voltage:
+      break;
+      case CommandIDs::readwrite_can_id:
+      break;
     }
-    motor_[i].raw_position_rad = motor_[i].wrap_offset + motor_[i].curr_wrap_position_rad - motor_[i].homing_offset;
   }
 }
 
@@ -408,7 +392,8 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_deactivate(
   RCLCPP_INFO(rclcpp::get_logger("RMDHardwareInterface"), "Stopping ...please wait...");
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    deactivate_motor(&motor_[i]);
+    request(&motor_[i],CommandIDs::motor_off);
+    request(&motor_[i],CommandIDs::close_brake);
   }
 
   can_intf_.deinit();
@@ -451,14 +436,13 @@ hardware_interface::return_type RMDHardwareInterface::write(
   {
     return hardware_interface::return_type::OK;
   }
-
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    double position = ((motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction) - motor_[i].homing_offset;
+    request(&motor_[i],CommandIDs::read_multiturn_angles);
+
+    // double position = ((motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction) - motor_[i].homing_offset;
     double velocity = motor_[i].hw_commands_velocities_rad_s * motor_[i].reduction;
     double torque = motor_[i].hw_commands_efforts_n_m / motor_[i].reduction;
-    double kp = motor_[i].kp;
-    double kd = motor_[i].kd;
     switch(motor_[i].control_mode)
     {
       case ControlModes::TORQUE:
@@ -468,12 +452,11 @@ hardware_interface::return_type RMDHardwareInterface::write(
       break;
       case ControlModes::VELOCITY:
       {
-        send_velocity(&motor_[i],velocity,kd);
+        send_vel(&motor_[i],velocity);
       }
       break;
       case ControlModes::POSITION:
       {
-        send_position(&motor_[i],position,kp);
       }
       break;
     }
