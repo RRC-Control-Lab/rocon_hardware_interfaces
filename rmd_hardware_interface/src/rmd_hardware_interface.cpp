@@ -36,23 +36,21 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
   }
 
   // Read the parameters
-  auto it = info_.hardware_parameters.find("interface");
-  if (it == info_.hardware_parameters.end()) {
+  if (info_.hardware_parameters.find("interface") == info_.hardware_parameters.end()) {
     RCLCPP_FATAL(
       rclcpp::get_logger(
         "RMDHardwareInterface"),
       "Parameter 'interface' not set. It is required for Socket CAN.");
     return hardware_interface::CallbackReturn::ERROR;
   } else {
-    can_interface_ = it->second;
+    can_interface_ = info_.hardware_parameters["interface"];
   }
 
   motor_.resize(info_.joints.size(), std::numeric_limits<Motor>::quiet_NaN());
 
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    it = info_.joints[i].parameters.find("node_id");
-    if (it == info_.joints[i].parameters.end())
+    if (info_.joints[i].parameters.find("node_id") == info_.joints[i].parameters.end())
     {
       RCLCPP_FATAL(
         rclcpp::get_logger(
@@ -63,10 +61,9 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     else
     {
-      motor_[i].node_id = std::stoi(it->second);
+      motor_[i].node_id = std::stoi(info_.joints[i].parameters["node_id"]);
     }
-    it = info_.joints[i].parameters.find("model");
-    if (it == info_.joints[i].parameters.end())
+    if (info_.joints[i].parameters.find("model") == info_.joints[i].parameters.end())
     {
       RCLCPP_FATAL(
         rclcpp::get_logger(
@@ -77,10 +74,9 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     else
     {
-      motor_[i].model = it->second;
+      motor_[i].model = info_.joints[i].parameters["model"];
     }
-    it = info_.joints[i].parameters.find("control_mode");
-    if (it == info_.joints[i].parameters.end())
+    if (info_.joints[i].parameters.find("control_mode") == info_.joints[i].parameters.end())
     {
       RCLCPP_FATAL(
         rclcpp::get_logger(
@@ -91,10 +87,9 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     else
     {
-      motor_[i].control_mode = control_modes.at(it->second);
+      motor_[i].control_mode = control_modes.at(info_.joints[i].parameters["control_mode"]);
     }
-    it = info_.joints[i].parameters.find("reduction");
-    if (it == info_.joints[i].parameters.end())
+    if (info_.joints[i].parameters.find("reduction") == info_.joints[i].parameters.end())
     {
       RCLCPP_INFO(
         rclcpp::get_logger(
@@ -105,15 +100,14 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     else
     {
-      motor_[i].reduction = std::stod(it->second);
+      motor_[i].reduction = std::stod(info_.joints[i].parameters["reduction"]);
       RCLCPP_INFO(
         rclcpp::get_logger(
           "RMDHardwareInterface"),
         "Parameter 'reduction' set for '%s' to %lf.",
         info_.joints[i].name.c_str(),motor_[i].reduction);
     }
-    it = info_.joints[i].parameters.find("offset");
-    if (it == info_.joints[i].parameters.end())
+    if (info_.joints[i].parameters.find("offset") == info_.joints[i].parameters.end())
     {
       RCLCPP_INFO(
         rclcpp::get_logger(
@@ -124,15 +118,14 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     else
     {
-      motor_[i].offset = std::stod(it->second);
+      motor_[i].offset = std::stod(info_.joints[i].parameters["offset"]);
       RCLCPP_INFO(
         rclcpp::get_logger(
           "RMDHardwareInterface"),
         "Parameter 'offset' set for '%s' to %lf.",
         info_.joints[i].name.c_str(),motor_[i].offset);
     }
-    it = info_.joints[i].parameters.find("home_on_startup");
-    if (it == info_.joints[i].parameters.end()) {
+    if (info_.joints[i].parameters.find("home_on_startup") == info_.joints[i].parameters.end()) {
       RCLCPP_INFO(
         rclcpp::get_logger(
           "RMDHardwareInterface"),
@@ -142,7 +135,7 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     else
     {
-      const std::string home_on_startup = it->second;
+      const std::string home_on_startup = info_.joints[i].parameters["home_on_startup"];
       if (home_on_startup == "True") {
         motor_[i].home_on_startup = true;
       } else if (home_on_startup == "False") {
@@ -163,8 +156,7 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     if(motor_[i].home_on_startup)
     {
-      it = info_.joints[i].parameters.find("homing_torque");
-      if (it == info_.joints[i].parameters.end())
+      if (info_.joints[i].parameters.find("homing_torque") == info_.joints[i].parameters.end())
       {
         RCLCPP_FATAL(
           rclcpp::get_logger(
@@ -174,7 +166,7 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
       }
       else
       {
-        motor_[i].homing_torque = std::stod(it->second);
+        motor_[i].homing_torque = std::stod(info_.joints[i].parameters["homing_torque"]);
         RCLCPP_INFO(
           rclcpp::get_logger(
             "RMDHardwareInterface"),
