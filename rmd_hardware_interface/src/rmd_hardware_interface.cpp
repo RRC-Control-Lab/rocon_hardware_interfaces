@@ -156,27 +156,27 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_init(
     }
     if(motor_[i].home_on_startup)
     {
-      if (info_.joints[i].parameters.find("homing_torque") == info_.joints[i].parameters.end())
+      if (info_.joints[i].parameters.find("homing_vel") == info_.joints[i].parameters.end())
       {
         RCLCPP_FATAL(
           rclcpp::get_logger(
             "RMDHardwareInterface"),
-          "Parameter 'homing_torque' not set for '%s' despite 'home_on_startup' being set true. It is required for homing procedure.", info_.joints[i].name.c_str());
+          "Parameter 'homing_vel' not set for '%s' despite 'home_on_startup' being set true. It is required for homing procedure.", info_.joints[i].name.c_str());
         return hardware_interface::CallbackReturn::ERROR;
       }
       else
       {
-        motor_[i].homing_torque = std::stod(info_.joints[i].parameters["homing_torque"]);
+        motor_[i].homing_vel = std::stod(info_.joints[i].parameters["homing_vel"]);
         RCLCPP_INFO(
           rclcpp::get_logger(
             "RMDHardwareInterface"),
-          "Parameter 'homing_torque' set for '%s' to %lf.",
-          info_.joints[i].name.c_str(),motor_[i].homing_torque);
+          "Parameter 'homing_vel' set for '%s' to %lf.",
+          info_.joints[i].name.c_str(),motor_[i].homing_vel);
       }
     }
     else
     {
-      motor_[i].homing_torque = 0.0;
+      motor_[i].homing_vel = 0.0;
     }
   }
 
@@ -276,16 +276,19 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_activate(
   {
     request(&motor_[i],CommandIDs::motor_off);
     request(&motor_[i],CommandIDs::open_brake);
-    std::this_thread::sleep_for(std::chrono::seconds(3));
     request(&motor_[i],CommandIDs::motor_run);
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     if(motor_[i].home_on_startup)
     {
-      // TODO: Implement homing procedure with velocity
-      // while(!send_torque(&motor_[i],motor_[i].homing_torque));
-      // while(!motor_[i].endstop_state);
-      // while(!send_torque(&motor_[i],0.0));
-      // motor_[i].homing_done = true;
+      send_vel(&motor_[i],motor_[i].homing_vel);
+      while(!motor_[i].endstop_state)
+      {
+        request(&motor_[i],CommandIDs::read_motor_status_2);
+      }
+      motor_[i].homing_offset = motor_[i].raw_position_rad;
+      send_vel(&motor_[i],0.0);
+      motor_[i].homing_done = true;
     }
   }
   activated = true;
@@ -296,21 +299,21 @@ void RMDHardwareInterface::recv_callback(const can_frame & frame)
 {
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    if((frame.can_id&0x1F) != motor_[i].node_id)
-    {
-      continue;
-    }
-    if ((frame.len!=8)&&(frame.len!=2))
-    {
-      RCLCPP_WARN(rclcpp::get_logger("RMDHardwareInterface"),
-            "Incorrect frame length received from motor/endstop with ID: %d. %d != 8(motor) or 2(endstop)", frame.can_id, frame.len);
-      continue;
-    }
-    if((frame.len == 2))
+    if(((frame.can_id) == 0x000) && (frame.len == 2) && (frame.data[0] == motor_[i].node_id))
     {
       motor_[i].endstop_state = bool(frame.data[1]);
       RCLCPP_INFO(
         rclcpp::get_logger("RMDHardwareInterface"), "'%s': Got Endstop as %d",info_.joints[i].name.c_str(),motor_[i].endstop_state);
+      continue;
+    }
+    if((frame.can_id&0x1F) != motor_[i].node_id)
+    {
+      continue;
+    }
+    if (frame.len!=8)
+    {
+      RCLCPP_WARN(rclcpp::get_logger("RMDHardwareInterface"),
+            "Incorrect frame length received from motor ID: %d. %d != 8", frame.can_id, frame.len);
       continue;
     }
     motor_[i].response_received = true;
@@ -338,11 +341,14 @@ void RMDHardwareInterface::recv_callback(const can_frame & frame)
       case CommandIDs::read_multiturn_counts_offset:
       break;
       case CommandIDs::read_multiturn_angles:
-        continuous_pos(&motor_[i],((read_le<uint32_t>(frame.data + 4))/(100.0*motor_[i].gear_ratio))*DEG2RAD);
       break;
       case CommandIDs::read_motor_status_1:
       break;
       case CommandIDs::read_motor_status_2:
+        motor_[i].temperature = frame.data[0];
+        motor_[i].raw_torque_n_m = map(read_le<int16_t>(frame.data + 2),-2048,2048,-33,33)*motor_[i].torque_constant;
+        motor_[i].raw_velocity_rad_s = (read_le<int16_t>(frame.data + 4)/motor_[i].gear_ratio)*DEG2RAD;
+        continuous_pos(&motor_[i],read_le<uint16_t>(frame.data + 6)/(motor_[i].gear_ratio*65535.0)*ROT2RAD);
       break;
       case CommandIDs::read_motor_status_3:
       break;
@@ -350,11 +356,13 @@ void RMDHardwareInterface::recv_callback(const can_frame & frame)
         motor_[i].temperature = frame.data[0];
         motor_[i].raw_torque_n_m = map(read_le<int16_t>(frame.data + 2),-2048,2048,-33,33)*motor_[i].torque_constant;
         motor_[i].raw_velocity_rad_s = (read_le<int16_t>(frame.data + 4)/motor_[i].gear_ratio)*DEG2RAD;
+        continuous_pos(&motor_[i],read_le<uint16_t>(frame.data + 6)/(motor_[i].gear_ratio*65535.0)*ROT2RAD);
       break;
       case CommandIDs::velocity_closed_loop:
         motor_[i].temperature = frame.data[0];
         motor_[i].raw_torque_n_m = map(read_le<int16_t>(frame.data + 2),-2048,2048,-33,33)*motor_[i].torque_constant;
         motor_[i].raw_velocity_rad_s = (read_le<int16_t>(frame.data + 4)/motor_[i].gear_ratio)*DEG2RAD;
+        continuous_pos(&motor_[i],read_le<uint16_t>(frame.data + 6)/(motor_[i].gear_ratio*65535.0)*ROT2RAD);
       break;
       case CommandIDs::position_closed_loop_1:
       break;
@@ -430,8 +438,6 @@ hardware_interface::return_type RMDHardwareInterface::write(
   }
   for (uint i = 0; i < info_.joints.size(); i++)
   {
-    request(&motor_[i],CommandIDs::read_multiturn_angles);
-
     // double position = ((motor_[i].hw_commands_positions_rad - motor_[i].offset) * motor_[i].reduction) - motor_[i].homing_offset;
     double velocity = motor_[i].hw_commands_velocities_rad_s * motor_[i].reduction;
     double torque = motor_[i].hw_commands_efforts_n_m / motor_[i].reduction;

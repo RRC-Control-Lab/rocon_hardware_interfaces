@@ -53,8 +53,8 @@
             <param name="kd">0.0</param>
             <param name="reduction">1.0</param>
             <param name="offset">0.0</param>
-            <param name="home_on_startup">False</param>
-            <param name="homing_torque">0.5</param>
+            <param name="home_on_startup">True</param>
+            <param name="homing_vel">1</param>
             <state_interface name="position"/>
             <state_interface name="velocity"/>
             <state_interface name="effort"/>

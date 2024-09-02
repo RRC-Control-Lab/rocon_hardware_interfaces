@@ -23,7 +23,7 @@ Info on some parameters is given below
   - DATA[0] = Motor Node ID
   - DATA[1] = Endstop State (should be true when detected)
   Once Endstop send detected signal, the motor assumes that position to be zero. Offset from this zero can be set with the `Offset` param.
-- __homing_torque__: Only used when `home_on_startup` is set to true. Sets torque that is used to move towards endstop. You can change the sign of the torque to change direction of seeking.
+- __homing_vel__: Only used when `home_on_startup` is set to true. Sets vel that is used to move towards endstop. You can change the sign of the vel to change direction of seeking.
 
 ```bash
 <ros2_control name="Wheel" type="actuator">
@@ -38,7 +38,7 @@ Info on some parameters is given below
          <param name="reduction">1.0</param>
          <param name="offset">0.0</param>
          <param name="home_on_startup">1.0</param>
-         <param name="homing_torque">1.0</param>
+         <param name="homing_vel">1.0</param>
          <param name="offset">0.0</param>
          <state_interface name="position"/>
          <state_interface name="velocity"/>

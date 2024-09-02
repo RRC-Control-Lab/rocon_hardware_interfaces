@@ -40,6 +40,8 @@
 
 #define DEG2RAD (2 * M_PI)/360.0
 #define RAD2DEG 360.0/(2 * M_PI)
+#define ROT2RAD (2 * M_PI)
+#define RAD2ROT 1/(2 * M_PI)
 #define SINGLEMOTOR 0x140
 #define MULTIMOTOR 0x280
 
@@ -182,7 +184,7 @@ private:
   {0x00F4, "Motor write ROM protection, non-safe operation"},};
   
   std::unordered_map<std::string, std::vector<double>> supported_motors_ = {
-  {"RMDX8_19",  {2.09,22.5,9,83290.3562}}};
+  {"RMDX8_19",  {2.09,22.5,9,0.6981317}}};
   
   struct Motor {
     uint32_t node_id;
@@ -211,7 +213,7 @@ private:
     double hw_states_velocities_rad_s;
     double hw_states_efforts_n_m;
     double homing_offset;
-    double homing_torque;
+    double homing_vel;
     double torque_constant;
     double max_velocity;
     double gear_ratio;
