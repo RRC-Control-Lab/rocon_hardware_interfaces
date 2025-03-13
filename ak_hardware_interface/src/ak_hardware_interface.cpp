@@ -341,6 +341,7 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
     {
       while(!send_torque(&motor_[i],motor_[i].homing_torque));
       while(!motor_[i].endstop_state);
+      motor_[i].homing_offset = motor_[i].raw_position_rad;
       while(!send_torque(&motor_[i],0.0));
       motor_[i].homing_done = true;
     }

@@ -2,7 +2,8 @@
 ROS2 Control Hardware Interfaces for Research Development
 
 ## Contents
-- [AK Hardware Interface](ak_hardware_interface)
+- [AK Hardware Interface](ak_hardware_interface/README.md)
+- [RMD Hardware Interface](rmd_hardware_interface/README.md)
 
 ## Instructions for checking the hardware interface
 ```bash
