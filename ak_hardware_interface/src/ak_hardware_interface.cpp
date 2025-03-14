@@ -310,6 +310,7 @@ std::vector<hardware_interface::CommandInterface> AKHardwareInterface::export_co
 
   return command_interfaces;
 }
+
 hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
@@ -333,7 +334,7 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
     deactivate_motor(&motor_[i]); 
     std::this_thread::sleep_for(std::chrono::seconds(3));
     RCLCPP_INFO(
-    rclcpp::get_logger("AKHardwareInterface"), "deactivating motor %d for 3 secs", motor_[i].node_id);
+    rclcpp::get_logger("AKHardwareInterface"), "dactivating motor %d for 3 secs", motor_[i].node_id);
 
     activate_motor(&motor_[i]);
     
@@ -361,7 +362,6 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
   activated = true;
   return CallbackReturn::SUCCESS;
 }
-
 
 void AKHardwareInterface::recv_callback(const can_frame & frame)
 {
@@ -411,6 +411,7 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
       }
     }
     motor_[i].raw_position_rad = motor_[i].wrap_offset + motor_[i].curr_wrap_position_rad - motor_[i].homing_offset;
+    // RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "%lf %lf %lf", motor_[i].wrap_offset , motor_[i].curr_wrap_position_rad ,motor_[i].homing_offset );
   }
 }
 
@@ -452,6 +453,7 @@ hardware_interface::return_type AKHardwareInterface::read(
     motor_[i].hw_states_efforts_n_m = motor_[i].raw_torque_n_m * motor_[i].reduction;
     motor_[i].hw_states_positions_rad = (motor_[i].raw_position_rad / motor_[i].reduction) + motor_[i].offset;
     motor_[i].hw_states_velocities_rad_s = motor_[i].raw_velocity_rad_s / motor_[i].reduction;
+    // RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "%lf %lf %lf %lf", motor_[i].raw_position_rad , motor_[i].reduction ,motor_[i].offset,motor_[i].homing_offset );
   }
   return hardware_interface::return_type::OK;
 }
