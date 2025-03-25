@@ -6,6 +6,7 @@ Info on some parameters is given below
 - __Node_ID__: This is the Node ID of the RMD Motor. To be set using [RMD Actuator GUI](./misc/windows_setup.exe) (only on windows).
 - __Model__: This is the model of the motor being used. Currently the following are accepted as valid inputs.
    - RMDX8_19
+   - RMDX6_16
 - __Control_Mode__: This is the control mode that the motor is to be run in. Following are valid inputs
    - torque
    - velocity (currently not supported)
