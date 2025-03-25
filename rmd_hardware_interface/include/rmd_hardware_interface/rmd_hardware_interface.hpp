@@ -184,7 +184,8 @@ private:
   {0x00F4, "Motor write ROM protection, non-safe operation"},};
   
   std::unordered_map<std::string, std::vector<double>> supported_motors_ = {
-  {"RMDX8_19",  {2.09,22.5,9,0.6981317}}};
+  {"RMDX8_19",  {2.09,22.5,9,0.6981317}},
+  {"RMDX6_16",  {0.88,19.9,6,1.04719755}}};
   
   struct Motor {
     uint32_t node_id;
