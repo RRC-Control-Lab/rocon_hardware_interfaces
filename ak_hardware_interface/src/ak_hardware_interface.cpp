@@ -331,6 +331,11 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
 
   for (uint i = 0; i < info_.joints.size(); i++)
   {
+    deactivate_motor(&motor_[i]); 
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    RCLCPP_INFO(
+    rclcpp::get_logger("AKHardwareInterface"), "dactivating motor %d for 3 secs", motor_[i].node_id);
+
     activate_motor(&motor_[i]);
     
     std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -339,9 +344,15 @@ hardware_interface::CallbackReturn AKHardwareInterface::on_activate(
 
     if(motor_[i].home_on_startup)
     {
-      while(!send_torque(&motor_[i],motor_[i].homing_torque));
-      while(!motor_[i].endstop_state);
+      while(!motor_[i].endstop_state)
+      {
+        send_velocity(&motor_[i],motor_[i].homing_torque, motor_[i].kd);
+        RCLCPP_INFO(
+        rclcpp::get_logger("AKHardwareInterface"), "homing with vel");
+      }
       motor_[i].homing_offset = motor_[i].raw_position_rad;
+      RCLCPP_INFO(
+        rclcpp::get_logger("AKHardwareInterface"),"%lf", motor_[i].homing_offset);
       while(!send_torque(&motor_[i],0.0));
       motor_[i].homing_done = true;
     }
@@ -400,6 +411,7 @@ void AKHardwareInterface::recv_callback(const can_frame & frame)
       }
     }
     motor_[i].raw_position_rad = motor_[i].wrap_offset + motor_[i].curr_wrap_position_rad - motor_[i].homing_offset;
+    // RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "%lf %lf %lf", motor_[i].wrap_offset , motor_[i].curr_wrap_position_rad ,motor_[i].homing_offset );
   }
 }
 
@@ -441,6 +453,7 @@ hardware_interface::return_type AKHardwareInterface::read(
     motor_[i].hw_states_efforts_n_m = motor_[i].raw_torque_n_m * motor_[i].reduction;
     motor_[i].hw_states_positions_rad = (motor_[i].raw_position_rad / motor_[i].reduction) + motor_[i].offset;
     motor_[i].hw_states_velocities_rad_s = motor_[i].raw_velocity_rad_s / motor_[i].reduction;
+    // RCLCPP_INFO(rclcpp::get_logger("AKHardwareInterface"), "%lf %lf %lf %lf", motor_[i].raw_position_rad , motor_[i].reduction ,motor_[i].offset,motor_[i].homing_offset );
   }
   return hardware_interface::return_type::OK;
 }
