@@ -277,7 +277,6 @@ hardware_interface::CallbackReturn RMDHardwareInterface::on_activate(
     request(&motor_[i],CommandIDs::motor_off);
     request(&motor_[i],CommandIDs::open_brake);
     request(&motor_[i],CommandIDs::motor_run);
-    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     if(motor_[i].home_on_startup)
     {
